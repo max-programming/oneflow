@@ -260,36 +260,6 @@ export function CreateProjectDialog({
       {triggerButton && <DialogTrigger asChild>{triggerButton}</DialogTrigger>}
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader className="space-y-3 border-b pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {breadcrumbItems.map((item, index) => (
-                <div key={item.path} className="flex items-center gap-2">
-                  {index > 0 && <ChevronRight className="size-3.5" />}
-                  <Link
-                    to={item.path}
-                    className={`capitalize transition-colors hover:text-foreground ${
-                      index === breadcrumbItems.length - 1
-                        ? "text-foreground font-medium"
-                        : "cursor-pointer"
-                    }`}
-                    onClick={(e) => {
-                      if (index < breadcrumbItems.length - 1) {
-                        e.preventDefault();
-                        navigate({ to: item.path });
-                        onOpenChange(false);
-                      }
-                    }}
-                  >
-                    {item.segment === "dashboard" ? "Dashboard" : item.segment}
-                  </Link>
-                </div>
-              ))}
-              <ChevronRight className="size-3.5" />
-              <span className="text-foreground font-medium">
-                Create Project
-              </span>
-            </div>
-          </div>
           <DialogTitle className="text-left text-2xl font-semibold">
             Create New Project
           </DialogTitle>
@@ -477,6 +447,11 @@ export function CreateProjectDialog({
                     mode="single"
                     selected={startDate}
                     captionLayout="dropdown"
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                     onSelect={(date) => {
                       setStartDate(date);
                       setStartDateOpen(false);
@@ -520,6 +495,16 @@ export function CreateProjectDialog({
                     mode="single"
                     selected={deadline}
                     captionLayout="dropdown"
+                    disabled={(date) => {
+                      if (startDate) {
+                        const minDate = new Date(startDate);
+                        minDate.setHours(0, 0, 0, 0);
+                        return date < minDate;
+                      }
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                     onSelect={(date) => {
                       setDeadline(date);
                       setDeadlineOpen(false);

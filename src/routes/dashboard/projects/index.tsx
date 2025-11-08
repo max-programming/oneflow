@@ -4,11 +4,14 @@ import { useState } from "react";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { getProjectsFn } from "@/server/projects";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ProjectCard, ProjectCardSkeleton } from "@/components/project-card";
+import {
+  ProjectsListTable,
+  ProjectsListTableSkeleton,
+} from "@/components/projects-list-table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { LayoutGrid, List } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/projects/")({
   component: RouteComponent,
@@ -17,6 +20,7 @@ export const Route = createFileRoute("/dashboard/projects/")({
 function RouteComponent() {
   const { session } = Route.useRouteContext();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
 
   const isAdminOrProjectManager =
     session?.user?.role === "admin" ||
@@ -42,23 +46,43 @@ function RouteComponent() {
                 View and manage all your projects
               </p>
             </div>
-            {isAdminOrProjectManager && (
-              <CreateProjectDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                triggerButton={
-                  <Button variant="default">Create Project</Button>
-                }
-              />
-            )}
+            <div className="flex items-center gap-2">
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(value) => {
+                  if (value) setViewMode(value as "card" | "list");
+                }}
+              >
+                <ToggleGroupItem value="card" aria-label="Card view">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="List view">
+                  <List className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+              {isAdminOrProjectManager && (
+                <CreateProjectDialog
+                  open={dialogOpen}
+                  onOpenChange={setDialogOpen}
+                  triggerButton={
+                    <Button variant="default">Create Project</Button>
+                  }
+                />
+              )}
+            </div>
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <ProjectCardSkeleton key={index} />
-              ))}
-            </div>
+            viewMode === "card" ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <ProjectCardSkeleton key={index} />
+                ))}
+              </div>
+            ) : (
+              <ProjectsListTableSkeleton />
+            )
           ) : error ? (
             <Card>
               <CardContent className="pt-6">
@@ -68,15 +92,22 @@ function RouteComponent() {
               </CardContent>
             </Card>
           ) : projects && projects.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  isAdminOrProjectManager={isAdminOrProjectManager}
-                />
-              ))}
-            </div>
+            viewMode === "card" ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    isAdminOrProjectManager={isAdminOrProjectManager}
+                  />
+                ))}
+              </div>
+            ) : (
+              <ProjectsListTable
+                projects={projects}
+                isAdminOrProjectManager={isAdminOrProjectManager}
+              />
+            )
           ) : (
             <Card>
               <CardContent className="pt-6">
