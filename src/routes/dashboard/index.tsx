@@ -3,6 +3,7 @@ import { ProjectStatusChart } from "@/components/project-status-chart";
 import { TodaysTasks } from "@/components/todays-tasks";
 import { ProjectsWithFilter } from "@/components/projects-with-filter";
 import { TasksListTable } from "@/components/tasks-list-table";
+import { DashboardFinancialSummary } from "@/components/dashboard-financial-summary";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getProjectManagerDashboardFn } from "@/server/projects";
@@ -89,6 +90,9 @@ function RouteComponent() {
             statistics={dashboardData?.statistics}
             isLoading={isDashboardLoading}
           />
+
+          {/* Financial Summary */}
+          <DashboardFinancialSummary />
 
           {/* Today's Tasks and Status Chart */}
           <div className="grid grid-cols-1 gap-4 px-4 lg:grid-cols-2 lg:px-6">

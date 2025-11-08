@@ -10,6 +10,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getProjectByIdFn } from "@/server/projects";
 import { NewTaskDialog } from "@/components/tasks/new-task-dialog";
 import { TasksKanban } from "@/components/tasks/tasks-kanban";
+import { ProjectFinancialOverview } from "@/components/project-financial-overview";
+import { ProjectFinancialLinks } from "@/components/project-financial-links";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -356,9 +358,10 @@ function RouteComponent() {
 
           {/* Navigation Tabs */}
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-11">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="financial">Financial</TabsTrigger>
               <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
               <TabsTrigger value="discussions">Discussions</TabsTrigger>
             </TabsList>
@@ -601,6 +604,14 @@ function RouteComponent() {
                 highlightedTaskId={highlightedTaskId}
                 onHighlightComplete={handleHighlightComplete}
               />
+            </TabsContent>
+
+            {/* Financial Tab */}
+            <TabsContent value="financial" className="mt-6">
+              <div className="space-y-6">
+                <ProjectFinancialOverview projectId={projectId} />
+                <ProjectFinancialLinks projectId={projectId} />
+              </div>
             </TabsContent>
 
             <TabsContent value="timesheets">
