@@ -1,4 +1,10 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import "../auth.css";
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useRouter,
+} from "@tanstack/react-router";
 import { useState } from "react";
 import { signInFn } from "@/server/auth";
 import { Button } from "@/components/ui/button";
@@ -12,6 +18,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/sign-in")({
+  beforeLoad: async ({ context }) => {
+    if (context.session) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: SignIn,
 });
 
@@ -41,7 +52,7 @@ function SignIn() {
   }
 
   return (
-    <div className="relative w-full md:h-screen md:overflow-hidden">
+    <div className="relative w-full md:h-screen md:overflow-hidden dark">
       <Particles
         className="absolute inset-0"
         color="#666666"

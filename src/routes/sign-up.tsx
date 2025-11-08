@@ -1,4 +1,10 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import "../auth.css";
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useRouter,
+} from "@tanstack/react-router";
 import { useState } from "react";
 import { signUpFn } from "@/server/auth";
 import { Button } from "@/components/ui/button";
@@ -12,6 +18,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/sign-up")({
+  beforeLoad: async ({ context }) => {
+    if (context.session) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: SignUp,
 });
 
@@ -42,7 +53,7 @@ function SignUp() {
   }
 
   return (
-    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2 dark">
       <div className="relative hidden h-full flex-col border-r bg-secondary p-10 lg:flex dark:bg-secondary/20">
         <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-background" />
         {/* <Logo className="mr-auto h-5" /> */}

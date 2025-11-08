@@ -8,8 +8,8 @@ export const Route = createFileRoute("/dashboard/admin/users/")({
 function RouteComponent() {
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-col gap-4 p-4 pt-0">
-        <div className="flex items-center justify-between">
+      <div className="@container/main flex flex-1 flex-col gap-2 px-4 lg:px-6">
+        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">
               User Management

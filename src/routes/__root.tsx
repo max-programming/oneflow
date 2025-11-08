@@ -2,6 +2,7 @@ import {
   HeadContent,
   Scripts,
   createRootRouteWithContext,
+  useLocation,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -9,6 +10,8 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import appCss from "../styles.css?url";
 import { getSessionFn } from "@/server/auth";
 import type { QueryClient } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   {
@@ -30,7 +33,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           content: "width=device-width, initial-scale=1",
         },
         {
-          title: "TanStack Start Starter",
+          title: "OneFlow",
         },
       ],
       links: [
@@ -46,13 +49,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 );
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body className="dark">
+      <body
+        className={cn(
+          ["/sign-in", "/sign-up"].includes(location.pathname) && "dark",
+        )}
+      >
         {children}
+        <Toaster />
         <TanStackDevtools
           config={{
             position: "bottom-right",
