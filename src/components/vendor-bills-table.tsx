@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconCash, IconTrash, IconCalendar } from "@tabler/icons-react";
+import { IconPlus, IconEdit, IconTrash, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -54,7 +54,7 @@ import {
 import {
   getVendorBillsFn,
   createVendorBillFn,
-  recordVendorBillPaymentFn,
+  updateVendorBillFn,
   deleteVendorBillFn,
 } from "@/server/vendor-bills";
 import { getVendorsFn } from "@/server/vendors";
@@ -381,54 +381,40 @@ function VendorBillCreateDialog() {
   );
 }
 
-interface RecordPaymentDialogProps {
+interface EditBillDialogProps {
   bill: VendorBills[number];
 }
 
-function RecordPaymentDialog({ bill }: RecordPaymentDialogProps) {
+function EditBillDialog({ bill }: EditBillDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [paymentAmount, setPaymentAmount] = React.useState("");
+  const [status, setStatus] = React.useState(bill.status);
   const queryClient = useQueryClient();
 
-  const totalAmount = parseFloat(bill.totalAmount);
-  const paidAmount = parseFloat(bill.paidAmount);
-  const remainingAmount = totalAmount - paidAmount;
-
   React.useEffect(() => {
-    if (!open) {
-      setPaymentAmount("");
+    if (open) {
+      setStatus(bill.status);
     }
-  }, [open]);
+  }, [open, bill.status]);
 
-  const recordPaymentMutation = useMutation({
-    mutationFn: recordVendorBillPaymentFn,
+  const updateMutation = useMutation({
+    mutationFn: updateVendorBillFn,
     onSuccess: () => {
-      toast.success("Payment recorded successfully");
+      toast.success("Bill updated successfully");
       setOpen(false);
       queryClient.invalidateQueries({ queryKey: ["vendorBills"] });
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to record payment",
+        error instanceof Error ? error.message : "Failed to update bill",
       );
     },
   });
 
-  function handleRecordPayment() {
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      toast.error("Please enter a valid payment amount");
-      return;
-    }
-
-    if (parseFloat(paymentAmount) > remainingAmount) {
-      toast.error("Payment amount cannot exceed remaining amount");
-      return;
-    }
-
-    recordPaymentMutation.mutate({
+  function handleUpdate() {
+    updateMutation.mutate({
       data: {
         billId: bill.id,
-        paymentAmount,
+        status: status as "draft" | "sent" | "paid" | "cancelled",
       },
     });
   }
@@ -437,59 +423,51 @@ function RecordPaymentDialog({ bill }: RecordPaymentDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm">
-          <IconCash className="h-4 w-4" />
+          <IconEdit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>Edit Bill</DialogTitle>
           <DialogDescription>
-            Record a payment for vendor bill {bill.billNumber}
+            Update vendor bill {bill.billNumber}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right font-medium">Total Amount:</Label>
-            <div className="col-span-3 text-lg font-semibold">
-              ₹{totalAmount.toLocaleString()}
+            <Label className="text-right">Total Amount</Label>
+            <div className="col-span-3 font-semibold">
+              ₹{parseFloat(bill.totalAmount).toLocaleString()}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right font-medium">Paid Amount:</Label>
-            <div className="col-span-3 text-lg font-semibold text-green-600">
-              ₹{paidAmount.toLocaleString()}
-            </div>
+            <Label className="text-right">Vendor</Label>
+            <div className="col-span-3">{bill.vendorName}</div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right font-medium">Remaining:</Label>
-            <div className="col-span-3 text-lg font-semibold text-orange-600">
-              ₹{remainingAmount.toLocaleString()}
-            </div>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="paymentAmount" className="text-right">
-              Payment Amount *
+            <Label htmlFor="status" className="text-right">
+              Status *
             </Label>
-            <Input
-              id="paymentAmount"
-              type="number"
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              className="col-span-3"
-              placeholder="Enter payment amount"
-              max={remainingAmount}
-            />
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
           <Button
             type="submit"
-            onClick={handleRecordPayment}
-            disabled={recordPaymentMutation.isPending}
+            onClick={handleUpdate}
+            disabled={updateMutation.isPending}
           >
-            {recordPaymentMutation.isPending
-              ? "Recording..."
-              : "Record Payment"}
+            {updateMutation.isPending ? "Updating..." : "Update Bill"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -586,7 +564,7 @@ export function VendorBillsTable() {
               <TableHead>Vendor</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Total Amount</TableHead>
-              <TableHead>Payment Status</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -618,8 +596,8 @@ export function VendorBillsTable() {
                     ₹{parseFloat(bill.totalAmount).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getPaymentBadgeVariant(bill.paymentStatus, bill.dueDate)}>
-                      {getPaymentStatusMessage(bill.paymentStatus, bill.dueDate)}
+                    <Badge variant={getPaymentBadgeVariant(bill.status, bill.dueDate)}>
+                      {getPaymentStatusMessage(bill.status, bill.dueDate)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -627,9 +605,7 @@ export function VendorBillsTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {bill.paymentStatus !== "fully_paid" && (
-                        <RecordPaymentDialog bill={bill} />
-                      )}
+                      <EditBillDialog bill={bill} />
                       <VendorBillDeleteDialog bill={bill} />
                     </div>
                   </TableCell>

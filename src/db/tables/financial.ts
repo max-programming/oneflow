@@ -14,7 +14,6 @@ import { customers, projects } from "./projects";
 
 // Enums for financial statuses
 export type InvoiceStatusEnum = "draft" | "sent" | "paid" | "cancelled";
-export type PaymentStatusEnum = "unpaid" | "partially_paid" | "fully_paid";
 export type ExpenseApprovalStatusEnum = "pending" | "approved" | "rejected";
 
 export const invoiceStatusEnum = pgEnum("invoice_status", [
@@ -22,12 +21,6 @@ export const invoiceStatusEnum = pgEnum("invoice_status", [
   "sent",
   "paid",
   "cancelled",
-]);
-
-export const paymentStatusEnum = pgEnum("payment_status", [
-  "unpaid",
-  "partially_paid",
-  "fully_paid",
 ]);
 
 export const expenseApprovalStatusEnum = pgEnum("expense_approval_status", [
@@ -128,10 +121,6 @@ export const customerInvoices = pgTable("customer_invoices", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   invoiceDate: date().notNull(),
   dueDate: date().notNull(),
-  paymentStatus: paymentStatusEnum().notNull().default("unpaid"),
-  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 })
-    .notNull()
-    .default("0"), // Track partial payments
   status: invoiceStatusEnum().notNull().default("draft"),
   createdBy: uuid()
     .notNull()
@@ -161,10 +150,6 @@ export const vendorBills = pgTable("vendor_bills", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   billDate: date().notNull(),
   dueDate: date().notNull(),
-  paymentStatus: paymentStatusEnum().notNull().default("unpaid"),
-  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 })
-    .notNull()
-    .default("0"),
   status: invoiceStatusEnum().notNull().default("draft"),
   createdBy: uuid()
     .notNull()

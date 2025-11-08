@@ -24,19 +24,6 @@ function calculateTotal(amount: string, taxPercentage: string): string {
   return totalAmount.toFixed(2);
 }
 
-// Helper function to determine payment status
-function determinePaymentStatus(
-  totalAmount: string,
-  paidAmount: string,
-): "unpaid" | "partially_paid" | "fully_paid" {
-  const total = parseFloat(totalAmount);
-  const paid = parseFloat(paidAmount);
-
-  if (paid === 0) return "unpaid";
-  if (paid >= total) return "fully_paid";
-  return "partially_paid";
-}
-
 // Create Vendor Bill - Sales/Finance and Admins can create
 export const createVendorBillFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
@@ -73,8 +60,6 @@ export const createVendorBillFn = createServerFn({ method: "POST" })
         totalAmount,
         billDate: data.billDate,
         dueDate: data.dueDate,
-        paymentStatus: "unpaid",
-        paidAmount: "0",
         status: data.status,
         createdBy: userId,
       })
@@ -128,8 +113,6 @@ export const getVendorBillsFn = createServerFn({ method: "GET" })
         totalAmount: vendorBills.totalAmount,
         billDate: vendorBills.billDate,
         dueDate: vendorBills.dueDate,
-        paymentStatus: vendorBills.paymentStatus,
-        paidAmount: vendorBills.paidAmount,
         status: vendorBills.status,
         createdBy: vendorBills.createdBy,
         createdByName: users.name,
@@ -176,8 +159,6 @@ export const getVendorBillByIdFn = createServerFn({ method: "GET" })
         totalAmount: vendorBills.totalAmount,
         billDate: vendorBills.billDate,
         dueDate: vendorBills.dueDate,
-        paymentStatus: vendorBills.paymentStatus,
-        paidAmount: vendorBills.paidAmount,
         status: vendorBills.status,
         createdBy: vendorBills.createdBy,
         createdByName: users.name,
@@ -235,8 +216,6 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
       const [current] = await db
         .select({
           status: vendorBills.status,
-          paymentStatus: vendorBills.paymentStatus,
-          paidAmount: vendorBills.paidAmount,
         })
         .from(vendorBills)
         .where(eq(vendorBills.id, billId))
@@ -247,12 +226,7 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
       }
 
       // Validate the status transition
-      validateStatusTransition(
-        current.status,
-        cleanedData.status,
-        current.paymentStatus,
-        parseFloat(current.paidAmount),
-      );
+      validateStatusTransition(current.status, cleanedData.status);
     }
 
     // Prevent editing paid or cancelled bills (except status field)
@@ -275,7 +249,6 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
         .select({
           amount: vendorBills.amount,
           taxPercentage: vendorBills.taxPercentage,
-          paidAmount: vendorBills.paidAmount,
         })
         .from(vendorBills)
         .where(eq(vendorBills.id, billId))
@@ -289,14 +262,10 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
       const finalTax = cleanedData.taxPercentage || current.taxPercentage;
 
       const totalAmount = calculateTotal(finalAmount, finalTax);
-      const paymentStatus = determinePaymentStatus(
-        totalAmount,
-        current.paidAmount,
-      );
 
       const [updatedBill] = await db
         .update(vendorBills)
-        .set({ ...cleanedData, totalAmount, paymentStatus })
+        .set({ ...cleanedData, totalAmount })
         .where(eq(vendorBills.id, billId))
         .returning();
 
@@ -315,68 +284,6 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
 
     if (!updatedBill) {
       throw new Error("Failed to update vendor bill");
-    }
-
-    return updatedBill;
-  });
-
-// Record Payment for Vendor Bill
-export const recordVendorBillPaymentFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware, salesFinanceOrAdmin])
-  .inputValidator(
-    z.object({
-      billId: z.number().int().positive("Invalid bill ID"),
-      paymentAmount: z.string().min(1, "Payment amount is required"),
-    }),
-  )
-  .handler(async ({ data }) => {
-    // Fetch current bill
-    const [current] = await db
-      .select({
-        totalAmount: vendorBills.totalAmount,
-        paidAmount: vendorBills.paidAmount,
-        status: vendorBills.status,
-      })
-      .from(vendorBills)
-      .where(eq(vendorBills.id, data.billId))
-      .limit(1);
-
-    if (!current) {
-      throw new Error("Vendor bill not found");
-    }
-
-    const currentPaid = parseFloat(current.paidAmount);
-    const payment = parseFloat(data.paymentAmount);
-    const newPaidAmount = (currentPaid + payment).toFixed(2);
-
-    // Determine new payment status
-    const paymentStatus = determinePaymentStatus(
-      current.totalAmount,
-      newPaidAmount,
-    );
-
-    // Auto-update status based on payment
-    // If fully paid -> set to 'paid'
-    // If currently 'draft' and receiving payment -> set to 'sent'
-    let status: "paid" | "sent" | undefined;
-    if (paymentStatus === "fully_paid") {
-      status = "paid";
-    } else if (current.status === "draft") {
-      status = "sent";
-    }
-
-    const [updatedBill] = await db
-      .update(vendorBills)
-      .set({
-        paidAmount: newPaidAmount,
-        paymentStatus,
-        ...(status && { status }),
-      })
-      .where(eq(vendorBills.id, data.billId))
-      .returning();
-
-    if (!updatedBill) {
-      throw new Error("Failed to record payment");
     }
 
     return updatedBill;

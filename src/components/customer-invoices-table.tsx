@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconTrash, IconCash, IconCalendar } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconEdit, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -54,8 +54,8 @@ import {
 import {
   getCustomerInvoicesFn,
   createCustomerInvoiceFn,
+  updateCustomerInvoiceFn,
   deleteCustomerInvoiceFn,
-  recordPaymentFn,
 } from "@/server/customer-invoices";
 import { getCustomersFn } from "@/server/customer";
 import { getProjectsFn } from "@/server/projects";
@@ -385,59 +385,56 @@ function CustomerInvoiceCreateDialog() {
   );
 }
 
-interface RecordPaymentDialogProps {
+interface EditInvoiceDialogProps {
   invoice: CustomerInvoices[number];
 }
 
-function RecordPaymentDialog({ invoice }: RecordPaymentDialogProps) {
+function EditInvoiceDialog({ invoice }: EditInvoiceDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [paymentAmount, setPaymentAmount] = React.useState("");
+  const [status, setStatus] = React.useState(invoice.status);
   const queryClient = useQueryClient();
 
-  const recordPaymentMutation = useMutation({
-    mutationFn: recordPaymentFn,
+  React.useEffect(() => {
+    if (open) {
+      setStatus(invoice.status);
+    }
+  }, [open, invoice.status]);
+
+  const updateMutation = useMutation({
+    mutationFn: updateCustomerInvoiceFn,
     onSuccess: () => {
-      toast.success("Payment recorded successfully");
+      toast.success("Invoice updated successfully");
       setOpen(false);
-      setPaymentAmount("");
       queryClient.invalidateQueries({ queryKey: ["customerInvoices"] });
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to record payment",
+        error instanceof Error ? error.message : "Failed to update invoice",
       );
     },
   });
 
-  function handleRecordPayment() {
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      toast.error("Please enter a valid payment amount");
-      return;
-    }
-
-    recordPaymentMutation.mutate({
+  function handleUpdate() {
+    updateMutation.mutate({
       data: {
         invoiceId: invoice.id,
-        paymentAmount,
+        status: status as "draft" | "sent" | "paid" | "cancelled",
       },
     });
   }
-
-  const remainingAmount =
-    parseFloat(invoice.totalAmount) - parseFloat(invoice.paidAmount);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm">
-          <IconCash className="h-4 w-4" />
+          <IconEdit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>Edit Invoice</DialogTitle>
           <DialogDescription>
-            Record a payment for invoice {invoice.invoiceNumber}
+            Update invoice {invoice.invoiceNumber}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -448,41 +445,33 @@ function RecordPaymentDialog({ invoice }: RecordPaymentDialogProps) {
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Paid</Label>
-            <div className="col-span-3 text-green-600">
-              ₹{parseFloat(invoice.paidAmount).toLocaleString()}
-            </div>
+            <Label className="text-right">Customer</Label>
+            <div className="col-span-3">{invoice.customerName}</div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Remaining</Label>
-            <div className="col-span-3 text-orange-600 font-semibold">
-              ₹{remainingAmount.toLocaleString()}
-            </div>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="payment" className="text-right">
-              Payment Amount *
+            <Label htmlFor="status" className="text-right">
+              Status *
             </Label>
-            <Input
-              id="payment"
-              type="number"
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              className="col-span-3"
-              placeholder="Enter payment amount"
-              max={remainingAmount}
-            />
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
           <Button
             type="submit"
-            onClick={handleRecordPayment}
-            disabled={recordPaymentMutation.isPending}
+            onClick={handleUpdate}
+            disabled={updateMutation.isPending}
           >
-            {recordPaymentMutation.isPending
-              ? "Recording..."
-              : "Record Payment"}
+            {updateMutation.isPending ? "Updating..." : "Update Invoice"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -594,8 +583,7 @@ export function CustomerInvoicesTable() {
               <TableHead>Customer</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Total Amount</TableHead>
-              <TableHead>Paid</TableHead>
-              <TableHead>Payment Status</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
@@ -604,7 +592,7 @@ export function CustomerInvoicesTable() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
-                  {Array.from({ length: 8 }).map((_, cellIndex) => (
+                  {Array.from({ length: 7 }).map((_, cellIndex) => (
                     <TableCell key={cellIndex}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -613,7 +601,7 @@ export function CustomerInvoicesTable() {
               ))
             ) : !invoices || invoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No customer invoices found.
                 </TableCell>
               </TableRow>
@@ -628,12 +616,9 @@ export function CustomerInvoicesTable() {
                   <TableCell>
                     ₹{parseFloat(invoice.totalAmount).toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-green-600">
-                    ₹{parseFloat(invoice.paidAmount).toLocaleString()}
-                  </TableCell>
                   <TableCell>
-                    <Badge variant={getPaymentBadgeVariant(invoice.paymentStatus, invoice.dueDate)}>
-                      {getPaymentStatusMessage(invoice.paymentStatus, invoice.dueDate)}
+                    <Badge variant={getPaymentBadgeVariant(invoice.status, invoice.dueDate)}>
+                      {getPaymentStatusMessage(invoice.status, invoice.dueDate)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -641,9 +626,7 @@ export function CustomerInvoicesTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {invoice.paymentStatus !== "fully_paid" && (
-                        <RecordPaymentDialog invoice={invoice} />
-                      )}
+                      <EditInvoiceDialog invoice={invoice} />
                       <CustomerInvoiceDeleteDialog invoice={invoice} />
                     </div>
                   </TableCell>

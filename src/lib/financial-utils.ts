@@ -5,14 +5,11 @@
 /**
  * Check if an invoice or bill is overdue
  * @param dueDate - The due date as a string (YYYY-MM-DD)
- * @param paymentStatus - The payment status (unpaid, partially_paid, fully_paid)
- * @returns True if the invoice/bill is overdue and not fully paid
+ * @param status - The document status (draft, sent, paid, cancelled)
+ * @returns True if the invoice/bill is overdue and not paid
  */
-export function isOverdue(
-  dueDate: string,
-  paymentStatus: string,
-): boolean {
-  if (paymentStatus === "fully_paid") return false;
+export function isOverdue(dueDate: string, status: string): boolean {
+  if (status === "paid") return false;
 
   const due = new Date(dueDate);
   const today = new Date();
@@ -38,42 +35,37 @@ export function getDaysOverdue(dueDate: string): number {
 }
 
 /**
- * Get the appropriate badge variant based on payment status and due date
- * @param paymentStatus - The payment status
+ * Get the appropriate badge variant based on status and due date
+ * @param status - The document status
  * @param dueDate - The due date as a string
  * @returns Badge variant for UI display
  */
 export function getPaymentBadgeVariant(
-  paymentStatus: string,
+  status: string,
   dueDate: string,
 ): "default" | "secondary" | "outline" | "destructive" {
-  if (paymentStatus === "fully_paid") return "default";
-  if (isOverdue(dueDate, paymentStatus)) return "destructive";
-  if (paymentStatus === "partially_paid") return "secondary";
+  if (status === "paid") return "default";
+  if (isOverdue(dueDate, status)) return "destructive";
   return "outline";
 }
 
 /**
  * Get a human-readable payment status message
- * @param paymentStatus - The payment status
+ * @param status - The document status
  * @param dueDate - The due date as a string
  * @returns Human-readable status message
  */
 export function getPaymentStatusMessage(
-  paymentStatus: string,
+  status: string,
   dueDate: string,
 ): string {
-  if (paymentStatus === "fully_paid") {
+  if (status === "paid") {
     return "Paid";
   }
 
-  if (isOverdue(dueDate, paymentStatus)) {
+  if (isOverdue(dueDate, status)) {
     const days = getDaysOverdue(dueDate);
     return `Overdue (${days}d)`;
-  }
-
-  if (paymentStatus === "partially_paid") {
-    return "Partially Paid";
   }
 
   // Format due date nicely
@@ -93,18 +85,11 @@ export function canEditDocument(status: string): boolean {
 /**
  * Check if payments can be recorded for an invoice/bill
  * @param status - The document status
- * @param paymentStatus - The payment status
  * @returns True if payments can be recorded
  */
-export function canRecordPayment(
-  status: string,
-  paymentStatus: string,
-): boolean {
-  // Cannot record payments for cancelled invoices
-  if (status === "cancelled") return false;
-
-  // Cannot record payments if already fully paid
-  if (paymentStatus === "fully_paid") return false;
+export function canRecordPayment(status: string): boolean {
+  // Cannot record payments for cancelled or already paid invoices
+  if (status === "cancelled" || status === "paid") return false;
 
   return true;
 }
@@ -113,15 +98,11 @@ export function canRecordPayment(
  * Validate status transition for invoices/bills
  * @param currentStatus - The current status
  * @param newStatus - The desired new status
- * @param paymentStatus - The payment status
- * @param paidAmount - The amount already paid
  * @throws Error if the transition is invalid
  */
 export function validateStatusTransition(
   currentStatus: string,
   newStatus: string,
-  paymentStatus: string,
-  paidAmount: number,
 ): void {
   // Cannot change status from paid or cancelled
   if (
@@ -130,20 +111,6 @@ export function validateStatusTransition(
   ) {
     throw new Error(
       `Cannot change status from ${currentStatus} to ${newStatus}`,
-    );
-  }
-
-  // Cannot mark as paid if not fully paid
-  if (newStatus === "paid" && paymentStatus !== "fully_paid") {
-    throw new Error(
-      "Cannot mark as paid: invoice/bill is not fully paid",
-    );
-  }
-
-  // Cannot cancel if payments have been recorded
-  if (newStatus === "cancelled" && paidAmount > 0) {
-    throw new Error(
-      "Cannot cancel: payments have already been recorded",
     );
   }
 }

@@ -24,19 +24,6 @@ function calculateTotal(amount: string, taxPercentage: string): string {
   return totalAmount.toFixed(2);
 }
 
-// Helper function to determine payment status
-function determinePaymentStatus(
-  totalAmount: string,
-  paidAmount: string,
-): "unpaid" | "partially_paid" | "fully_paid" {
-  const total = parseFloat(totalAmount);
-  const paid = parseFloat(paidAmount);
-
-  if (paid === 0) return "unpaid";
-  if (paid >= total) return "fully_paid";
-  return "partially_paid";
-}
-
 // Create Customer Invoice - Sales/Finance and Admins can create
 export const createCustomerInvoiceFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
@@ -73,8 +60,6 @@ export const createCustomerInvoiceFn = createServerFn({ method: "POST" })
         totalAmount,
         invoiceDate: data.invoiceDate,
         dueDate: data.dueDate,
-        paymentStatus: "unpaid",
-        paidAmount: "0",
         status: data.status,
         createdBy: userId,
       })
@@ -128,8 +113,6 @@ export const getCustomerInvoicesFn = createServerFn({ method: "GET" })
         totalAmount: customerInvoices.totalAmount,
         invoiceDate: customerInvoices.invoiceDate,
         dueDate: customerInvoices.dueDate,
-        paymentStatus: customerInvoices.paymentStatus,
-        paidAmount: customerInvoices.paidAmount,
         status: customerInvoices.status,
         createdBy: customerInvoices.createdBy,
         createdByName: users.name,
@@ -173,8 +156,6 @@ export const getCustomerInvoiceByIdFn = createServerFn({ method: "GET" })
         totalAmount: customerInvoices.totalAmount,
         invoiceDate: customerInvoices.invoiceDate,
         dueDate: customerInvoices.dueDate,
-        paymentStatus: customerInvoices.paymentStatus,
-        paidAmount: customerInvoices.paidAmount,
         status: customerInvoices.status,
         createdBy: customerInvoices.createdBy,
         createdByName: users.name,
@@ -232,8 +213,6 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
       const [current] = await db
         .select({
           status: customerInvoices.status,
-          paymentStatus: customerInvoices.paymentStatus,
-          paidAmount: customerInvoices.paidAmount,
         })
         .from(customerInvoices)
         .where(eq(customerInvoices.id, invoiceId))
@@ -244,12 +223,7 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
       }
 
       // Validate the status transition
-      validateStatusTransition(
-        current.status,
-        cleanedData.status,
-        current.paymentStatus,
-        parseFloat(current.paidAmount),
-      );
+      validateStatusTransition(current.status, cleanedData.status);
     }
 
     // Prevent editing paid or cancelled invoices (except status field)
@@ -272,7 +246,6 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
         .select({
           amount: customerInvoices.amount,
           taxPercentage: customerInvoices.taxPercentage,
-          paidAmount: customerInvoices.paidAmount,
         })
         .from(customerInvoices)
         .where(eq(customerInvoices.id, invoiceId))
@@ -286,14 +259,10 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
       const finalTax = cleanedData.taxPercentage || current.taxPercentage;
 
       const totalAmount = calculateTotal(finalAmount, finalTax);
-      const paymentStatus = determinePaymentStatus(
-        totalAmount,
-        current.paidAmount,
-      );
 
       const [updatedInvoice] = await db
         .update(customerInvoices)
-        .set({ ...cleanedData, totalAmount, paymentStatus })
+        .set({ ...cleanedData, totalAmount })
         .where(eq(customerInvoices.id, invoiceId))
         .returning();
 
@@ -312,68 +281,6 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
 
     if (!updatedInvoice) {
       throw new Error("Failed to update customer invoice");
-    }
-
-    return updatedInvoice;
-  });
-
-// Record Payment for Customer Invoice
-export const recordPaymentFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware, salesFinanceOrAdmin])
-  .inputValidator(
-    z.object({
-      invoiceId: z.number().int().positive("Invalid invoice ID"),
-      paymentAmount: z.string().min(1, "Payment amount is required"),
-    }),
-  )
-  .handler(async ({ data }) => {
-    // Fetch current invoice
-    const [current] = await db
-      .select({
-        totalAmount: customerInvoices.totalAmount,
-        paidAmount: customerInvoices.paidAmount,
-        status: customerInvoices.status,
-      })
-      .from(customerInvoices)
-      .where(eq(customerInvoices.id, data.invoiceId))
-      .limit(1);
-
-    if (!current) {
-      throw new Error("Customer invoice not found");
-    }
-
-    const currentPaid = parseFloat(current.paidAmount);
-    const payment = parseFloat(data.paymentAmount);
-    const newPaidAmount = (currentPaid + payment).toFixed(2);
-
-    // Determine new payment status
-    const paymentStatus = determinePaymentStatus(
-      current.totalAmount,
-      newPaidAmount,
-    );
-
-    // Auto-update status based on payment
-    // If fully paid -> set to 'paid'
-    // If currently 'draft' and receiving payment -> set to 'sent'
-    let status: "paid" | "sent" | undefined;
-    if (paymentStatus === "fully_paid") {
-      status = "paid";
-    } else if (current.status === "draft") {
-      status = "sent";
-    }
-
-    const [updatedInvoice] = await db
-      .update(customerInvoices)
-      .set({
-        paidAmount: newPaidAmount,
-        paymentStatus,
-        ...(status && { status }),
-      })
-      .where(eq(customerInvoices.id, data.invoiceId))
-      .returning();
-
-    if (!updatedInvoice) {
-      throw new Error("Failed to record payment");
     }
 
     return updatedInvoice;
