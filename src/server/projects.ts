@@ -2,7 +2,19 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { customers, projects } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  isNull,
+  lt,
+  or,
+  ilike,
+  gte,
+  lte,
+  arrayOverlaps,
+  SQL,
+} from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -197,12 +209,38 @@ export const getProjectsPaginatedFn = createServerFn({ method: "GET" })
     z.object({
       cursor: z.string().optional(),
       limit: z.number().default(12),
+      query: z.string().optional(),
+      manager: z.string().optional(),
+      customer: z.string().optional(),
+      status: z
+        .enum([
+          "all",
+          "in-progress",
+          "waiting-to-start",
+          "completed",
+          "cancelled",
+          "on-hold",
+        ])
+        .optional(),
+      startDate: z.string().optional(),
+      deadlineDate: z.string().optional(),
+      tags: z.array(z.string()).optional(),
     }),
   )
   .handler(async ({ data }) => {
-    const { cursor, limit } = data;
-    
-    let query = db
+    const {
+      cursor,
+      limit,
+      query,
+      manager,
+      customer,
+      status,
+      startDate,
+      deadlineDate,
+      tags,
+    } = data;
+
+    let dbQuery = db
       .select({
         id: projects.id,
         name: projects.name,
@@ -226,45 +264,86 @@ export const getProjectsPaginatedFn = createServerFn({ method: "GET" })
       .leftJoin(customers, eq(projects.customerId, customers.id))
       .leftJoin(users, eq(projects.managerId, users.id))
       .$dynamic();
-      
+
+    // Build filter conditions
+    const filterConditions: SQL[] = [isNull(projects.deletedAt)];
+
+    // Text search filter (project name and description)
+    if (query && query.trim()) {
+      const searchTerm = `%${query.trim()}%`;
+      filterConditions.push(ilike(projects.name, searchTerm));
+    }
+
+    // Manager filter
+    if (manager) {
+      filterConditions.push(eq(projects.managerId, manager));
+    }
+
+    // Customer filter
+    if (customer) {
+      filterConditions.push(eq(projects.customerId, customer));
+    }
+
+    // Status filter
+    if (status && status !== "all") {
+      filterConditions.push(eq(projects.status, status));
+    }
+
+    // Start date filter (projects starting after this date)
+    if (startDate) {
+      filterConditions.push(gte(projects.startDate, startDate));
+    }
+
+    // Deadline date filter (projects due before this date)
+    if (deadlineDate) {
+      filterConditions.push(lte(projects.deadlineDate, deadlineDate));
+    }
+
+    // Tags filter (OR logic - project has any of the selected tags)
+    if (tags && tags.length > 0) {
+      filterConditions.push(arrayOverlaps(projects.tags, tags));
+    }
+
+    // Apply cursor pagination
     if (cursor) {
       const [cursorProject] = await db
-        .select({ 
+        .select({
           createdAt: projects.createdAt,
-          id: projects.id 
+          id: projects.id,
         })
         .from(projects)
         .where(eq(projects.id, cursor))
         .limit(1);
-      
+
       if (cursorProject && cursorProject.createdAt) {
-        query = query.where(
+        const cursorCondition = or(
+          lt(projects.createdAt, cursorProject.createdAt),
           and(
-            isNull(projects.deletedAt),
-            or(
-              lt(projects.createdAt, cursorProject.createdAt),
-              and(
-                eq(projects.createdAt, cursorProject.createdAt),
-                lt(projects.id, cursorProject.id)
-              )
-            )
-          )
+            eq(projects.createdAt, cursorProject.createdAt),
+            lt(projects.id, cursorProject.id),
+          ),
         );
-      } else {
-        query = query.where(isNull(projects.deletedAt));
+        if (cursorCondition) {
+          filterConditions.push(cursorCondition);
+        }
       }
-    } else {
-      query = query.where(isNull(projects.deletedAt));
     }
-    
-    const projectsData = await query
+
+    // Apply all filter conditions
+    dbQuery = dbQuery.where(and(...filterConditions));
+
+    const projectsData = await dbQuery
       .orderBy(desc(projects.createdAt), desc(projects.id))
       .limit(limit + 1);
-    
+
     const hasNextPage = projectsData.length > limit;
-    const projectsToReturn = hasNextPage ? projectsData.slice(0, limit) : projectsData;
-    const nextCursor = hasNextPage ? projectsToReturn[projectsToReturn.length - 1]?.id : undefined;
-    
+    const projectsToReturn = hasNextPage
+      ? projectsData.slice(0, limit)
+      : projectsData;
+    const nextCursor = hasNextPage
+      ? projectsToReturn[projectsToReturn.length - 1]?.id
+      : undefined;
+
     return {
       projects: projectsToReturn,
       nextCursor,
@@ -427,7 +506,7 @@ export const getProjectManagerDashboardFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .handler(async ({ context }) => {
     const userId = context.user.id;
-    
+
     // Get all projects managed by the PM
     const allProjects = await db
       .select({
@@ -457,67 +536,89 @@ export const getProjectManagerDashboardFn = createServerFn({ method: "GET" })
 
     // Calculate statistics
     const totalProjects = allProjects.length;
-    
+
     const activeProjects = allProjects.filter(
-      (p) => p.status === "in-progress"
+      (p) => p.status === "in-progress",
     ).length;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const sevenDaysFromNow = new Date(today);
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-    
+
     const projectsNearingDeadline = allProjects.filter((p) => {
       if (!p.deadlineDate) return false;
       const deadline = new Date(p.deadlineDate);
-      return deadline >= today && deadline <= sevenDaysFromNow && p.status !== "completed" && p.status !== "cancelled";
+      return (
+        deadline >= today &&
+        deadline <= sevenDaysFromNow &&
+        p.status !== "completed" &&
+        p.status !== "cancelled"
+      );
     }).length;
-    
+
     const overdueProjects = allProjects.filter((p) => {
       if (!p.deadlineDate) return false;
       const deadline = new Date(p.deadlineDate);
-      return deadline < today && p.status !== "completed" && p.status !== "cancelled";
+      return (
+        deadline < today && p.status !== "completed" && p.status !== "cancelled"
+      );
     }).length;
-    
+
     // Status distribution
     const statusDistribution = {
       "in-progress": 0,
       "waiting-to-start": 0,
-      "completed": 0,
-      "cancelled": 0,
+      completed: 0,
+      cancelled: 0,
       "on-hold": 0,
     };
-    
+
     allProjects.forEach((p) => {
       if (p.status && statusDistribution[p.status] !== undefined) {
         statusDistribution[p.status]++;
       }
     });
-    
+
     // Get urgent projects (deadline within 7 days)
     const urgentProjects = allProjects
       .filter((p) => {
         if (!p.deadlineDate) return false;
         const deadline = new Date(p.deadlineDate);
-        return deadline >= today && deadline <= sevenDaysFromNow && p.status !== "completed" && p.status !== "cancelled";
+        return (
+          deadline >= today &&
+          deadline <= sevenDaysFromNow &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
       })
       .sort((a, b) => {
         if (!a.deadlineDate || !b.deadlineDate) return 0;
-        return new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime();
+        return (
+          new Date(a.deadlineDate).getTime() -
+          new Date(b.deadlineDate).getTime()
+        );
       });
-    
+
     // Get overdue projects
     const overdueProjectsList = allProjects
       .filter((p) => {
         if (!p.deadlineDate) return false;
         const deadline = new Date(p.deadlineDate);
-        return deadline < today && p.status !== "completed" && p.status !== "cancelled";
+        return (
+          deadline < today &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
       })
       .sort((a, b) => {
         if (!a.deadlineDate || !b.deadlineDate) return 0;
-        return new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime();
+        return (
+          new Date(a.deadlineDate).getTime() -
+          new Date(b.deadlineDate).getTime()
+        );
       });
-    
+
     // Get recent projects (recently updated)
     const recentProjects = [...allProjects]
       .sort((a, b) => {

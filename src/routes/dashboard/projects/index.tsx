@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { getProjectsPaginatedFn } from "@/server/projects";
+import { ProjectFiltersBar } from "@/components/project-filters-bar";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProjectCard, ProjectCardSkeleton } from "@/components/project-card";
 import {
@@ -33,7 +34,7 @@ const searchParamsSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-type SearchParams = z.infer<typeof searchParamsSchema>;
+export type ProjectsPageSP = z.infer<typeof searchParamsSchema>;
 
 export const Route = createFileRoute("/dashboard/projects/")({
   validateSearch: searchParamsSchema,
@@ -43,9 +44,34 @@ export const Route = createFileRoute("/dashboard/projects/")({
 function RouteComponent() {
   const { session } = Route.useRouteContext();
   const searchParams = Route.useSearch();
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  function handleFiltersChange(
+    newFilters: Omit<ProjectsPageSP, "startDate" | "deadlineDate"> & {
+      startDate?: string;
+      deadlineDate?: string;
+    },
+  ) {
+    navigate({
+      to: "/dashboard/projects",
+      search: (prev) => {
+        return {
+          ...prev,
+          ...newFilters,
+          startDate: newFilters.startDate
+            ? new Date(newFilters.startDate)
+            : undefined,
+          deadlineDate: newFilters.deadlineDate
+            ? new Date(newFilters.deadlineDate)
+            : undefined,
+        };
+      },
+      replace: true,
+    });
+  }
 
   const isAdminOrProjectManager =
     session?.user?.role === "admin" ||
@@ -60,9 +86,21 @@ function RouteComponent() {
     isFetchingNextPage,
     isFetching,
   } = useInfiniteQuery({
-    queryKey: ["projects", "infinite"],
+    queryKey: ["projects", "infinite", searchParams],
     queryFn: ({ pageParam }) =>
-      getProjectsPaginatedFn({ data: { cursor: pageParam, limit: 12 } }),
+      getProjectsPaginatedFn({
+        data: {
+          cursor: pageParam,
+          limit: 12,
+          query: searchParams.query,
+          manager: searchParams.manager,
+          customer: searchParams.customer,
+          status: searchParams.status,
+          startDate: searchParams.startDate?.toISOString().split("T")[0],
+          deadlineDate: searchParams.deadlineDate?.toISOString().split("T")[0],
+          tags: searchParams.tags,
+        },
+      }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
@@ -123,6 +161,18 @@ function RouteComponent() {
               )}
             </div>
           </div>
+
+          {/* Project Filters */}
+          <ProjectFiltersBar
+            query={searchParams.query}
+            manager={searchParams.manager}
+            customer={searchParams.customer}
+            status={searchParams.status || "all"}
+            startDate={searchParams.startDate}
+            deadlineDate={searchParams.deadlineDate}
+            tags={searchParams.tags}
+            onFiltersChange={handleFiltersChange}
+          />
 
           {isLoading ? (
             viewMode === "card" ? (
