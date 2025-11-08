@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { customers, projects } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,

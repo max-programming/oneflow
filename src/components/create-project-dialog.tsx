@@ -48,8 +48,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { getCustomersFn } from "@/server/customer";
 import { createProjectFn, getProjectManagersFn } from "@/server/projects";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { ProjectStatusEnum } from "@/db/schema";
+import { toast } from "sonner";
 
 const defaultTags = [
   { id: "react", label: "React" },
@@ -120,7 +121,6 @@ export function CreateProjectDialog({
   const [status, setStatus] = useState<ProjectStatusEnum>("waiting-to-start");
   const [projectName, setProjectName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch project managers and customers
   const { data: projectManagersData } = useQuery({
@@ -146,24 +146,40 @@ export function CreateProjectDialog({
       label: customer.name,
     })) || [];
 
-  const handleRemove = (value: string) => {
+  // Create project mutation
+  const createProjectMutation = useMutation({
+    mutationFn: createProjectFn,
+    onSuccess: () => {
+      toast.success("Project created successfully");
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      onOpenChange(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create project",
+      );
+    },
+  });
+
+  function handleRemove(value: string) {
     if (!selected.includes(value)) {
       return;
     }
     console.log(`removed: ${value}`);
     setSelected((prev) => prev.filter((v) => v !== value));
-  };
+  }
 
-  const handleSelect = (value: string) => {
+  function handleSelect(value: string) {
     if (selected.includes(value)) {
       handleRemove(value);
       return;
     }
     console.log(`selected: ${value}`);
     setSelected((prev) => [...prev, value]);
-  };
+  }
 
-  const handleCreateTag = () => {
+  function handleCreateTag() {
     if (!newTag.trim()) return;
     console.log(`created: ${newTag}`);
     setTags((prev) => [
@@ -175,9 +191,9 @@ export function CreateProjectDialog({
     ]);
     setSelected((prev) => [...prev, newTag.toLowerCase().replace(/\s+/g, "-")]);
     setNewTag("");
-  };
+  }
 
-  const resetForm = () => {
+  function resetForm() {
     setProjectName("");
     setDescription("");
     setSelected([]);
@@ -186,19 +202,23 @@ export function CreateProjectDialog({
     setStatus("waiting-to-start");
     setStartDate(undefined);
     setDeadline(undefined);
-  };
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function handleSubmit(e: React.FormEvent) {
+    // TOOD: Add proper validation on client side
     e.preventDefault();
 
     // Validate required fields
     if (!projectName.trim()) {
+      toast.error("Project name is required");
       return;
     }
     if (!projectManager) {
+      toast.error("Project manager is required");
       return;
     }
     if (!customer) {
+      toast.error("Customer is required");
       return;
     }
 
@@ -215,30 +235,19 @@ export function CreateProjectDialog({
       .map((tagId) => tags.find((t) => t.id === tagId)?.label)
       .filter(Boolean) as string[];
 
-    setIsSubmitting(true);
-    try {
-      await createProjectFn({
-        data: {
-          name: projectName.trim(),
-          description: description.trim() || undefined,
-          status: status,
-          managerId: projectManager,
-          customerId: customer,
-          startDate: formattedStartDate,
-          deadlineDate: formattedDeadlineDate,
-          tags: tagLabels,
-        },
-      });
-
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      onOpenChange(false);
-      resetForm();
-    } catch (error) {
-      console.error("Failed to create project:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    createProjectMutation.mutate({
+      data: {
+        name: projectName.trim(),
+        description: description.trim() || undefined,
+        status: status,
+        managerId: projectManager,
+        customerId: customer,
+        startDate: formattedStartDate,
+        deadlineDate: formattedDeadlineDate,
+        tags: tagLabels,
+      },
+    });
+  }
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
   const breadcrumbItems = pathSegments.map((segment, index) => {
@@ -301,6 +310,7 @@ export function CreateProjectDialog({
                 className="w-full"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
+                disabled={createProjectMutation.isPending}
               />
             </div>
 
@@ -310,7 +320,7 @@ export function CreateProjectDialog({
                 Tags
               </Label>
               <Tags className="w-full">
-                <TagsTrigger>
+                <TagsTrigger disabled={createProjectMutation.isPending}>
                   {selected.map((tag) => (
                     <TagsValue key={tag} onRemove={() => handleRemove(tag)}>
                       {tags.find((t) => t.id === tag)?.label}
@@ -322,6 +332,7 @@ export function CreateProjectDialog({
                     value={newTag}
                     onValueChange={setNewTag}
                     placeholder="Search tag..."
+                    disabled={createProjectMutation.isPending}
                   />
                   <TagsList>
                     <TagsEmpty>
@@ -378,7 +389,10 @@ export function CreateProjectDialog({
                 value={projectManager}
                 onValueChange={setProjectManager}
               >
-                <ComboboxTrigger className="w-full" />
+                <ComboboxTrigger
+                  className="w-full"
+                  disabled={createProjectMutation.isPending}
+                />
                 <ComboboxContent>
                   <ComboboxInput />
                   <ComboboxEmpty />
@@ -406,7 +420,10 @@ export function CreateProjectDialog({
                 value={customer}
                 onValueChange={setCustomer}
               >
-                <ComboboxTrigger className="w-full" />
+                <ComboboxTrigger
+                  className="w-full"
+                  disabled={createProjectMutation.isPending}
+                />
                 <ComboboxContent>
                   <ComboboxInput />
                   <ComboboxEmpty />
@@ -437,6 +454,7 @@ export function CreateProjectDialog({
                     variant="outline"
                     id="start-date"
                     className="w-full justify-between font-normal"
+                    disabled={createProjectMutation.isPending}
                   >
                     <span
                       className={
@@ -479,6 +497,7 @@ export function CreateProjectDialog({
                     variant="outline"
                     id="deadline"
                     className="w-full justify-between font-normal"
+                    disabled={createProjectMutation.isPending}
                   >
                     <span
                       className={
@@ -521,7 +540,10 @@ export function CreateProjectDialog({
                 value={status}
                 onValueChange={(value) => setStatus(value as ProjectStatusEnum)}
               >
-                <ComboboxTrigger className="w-full" />
+                <ComboboxTrigger
+                  className="w-full"
+                  disabled={createProjectMutation.isPending}
+                />
                 <ComboboxContent>
                   <ComboboxInput />
                   <ComboboxEmpty />
@@ -553,6 +575,7 @@ export function CreateProjectDialog({
                 className="resize-none min-h-[100px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={createProjectMutation.isPending}
               />
             </div>
           </div>
@@ -563,8 +586,8 @@ export function CreateProjectDialog({
                 Discard
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save Project"}
+            <Button type="submit" disabled={createProjectMutation.isPending}>
+              {createProjectMutation.isPending ? "Saving..." : "Save Project"}
             </Button>
           </DialogFooter>
         </form>
