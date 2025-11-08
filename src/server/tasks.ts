@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { UserRole, users } from "@/db/schema";
 import {
   projectTaskAssignees,
   projectTasks,
@@ -48,12 +48,7 @@ export const createProjectTaskFn = createServerFn({ method: "POST" })
     }
 
     // Check if user is project manager or admin
-    if (
-      session.user.id !== project.managerId &&
-      session.user.role !== "admin"
-    ) {
-      throw new Error("Only the project manager or admin can create tasks");
-    }
+    verifyProjectManager(session.user.id, session.user.role, project.managerId);
 
     const [task] = await db
       .insert(projectTasks)
@@ -248,12 +243,7 @@ export const updateProjectTaskFn = createServerFn({ method: "POST" })
     }
 
     // Check if user is project manager or admin
-    if (
-      session.user.id !== project.managerId &&
-      session.user.role !== "admin"
-    ) {
-      throw new Error("Only the project manager or admin can update tasks");
-    }
+    verifyProjectManager(session.user.id, session.user.role, project.managerId);
 
     const [updatedTask] = await db
       .update(projectTasks)
@@ -308,12 +298,8 @@ export const deleteProjectTaskFn = createServerFn({ method: "POST" })
     }
 
     // Check if user is project manager or admin
-    if (
-      session.user.id !== project.managerId &&
-      session.user.role !== "admin"
-    ) {
-      throw new Error("Only the project manager or admin can delete tasks");
-    }
+
+    verifyProjectManager(session.user.id, session.user.role, project.managerId);
 
     const [deletedTask] = await db
       .update(projectTasks)
@@ -393,7 +379,7 @@ export const addTaskAssigneeFn = createServerFn({ method: "POST" })
       session.user.id !== project.managerId &&
       session.user.role !== "admin"
     ) {
-      throw new Error("Only the project manager or admin can add assignees");
+      throw new Error("Only the project manager or admin can delete tasks");
     }
 
     // Check if user is already assigned
@@ -466,12 +452,7 @@ export const removeTaskAssigneeFn = createServerFn({ method: "POST" })
     }
 
     // Check if user is project manager or admin
-    if (
-      session.user.id !== project.managerId &&
-      session.user.role !== "admin"
-    ) {
-      throw new Error("Only the project manager or admin can remove assignees");
-    }
+    verifyProjectManager(session.user.id, session.user.role, project.managerId);
 
     const [deletedAssignee] = await db
       .delete(projectTaskAssignees)
@@ -515,3 +496,15 @@ export const getTaskAssigneesFn = createServerFn({ method: "GET" })
 
     return assignees;
   });
+
+async function verifyProjectManager(
+  userId: string,
+  userRole: UserRole,
+  managerId: string,
+) {
+  if (userId !== managerId && userRole !== "admin") {
+    throw new Error(
+      "Only the project manager or admin can add or modify tasks and assignees",
+    );
+  }
+}

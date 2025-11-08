@@ -647,17 +647,15 @@ function RouteComponent() {
             </TabsContent>
 
             {/* Add similar placeholders for other tabs */}
-            {["milestones", "files", "discussions"].map((tab) => (
-              <TabsContent key={tab} value={tab}>
-                <Card>
-                  <CardContent className="flex items-center justify-center h-64">
-                    <p className="text-muted-foreground capitalize">
-                      {tab} view coming soon...
-                    </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            ))}
+            <TabsContent value="discussions">
+              <Card>
+                <CardContent className="flex items-center justify-center h-64">
+                  <p className="text-muted-foreground capitalize">
+                    Discussions view coming soon...
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
