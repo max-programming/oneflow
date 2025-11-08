@@ -231,7 +231,7 @@ function RouteComponent() {
               {/* Project Name */}
               <div className="space-y-2">
                 <Label htmlFor="project-name" className="text-sm font-medium">
-                  Project Name <span className="text-destructive">*</span>
+                  Project Name
                 </Label>
                 <Input
                   id="project-name"
@@ -315,7 +315,7 @@ function RouteComponent() {
                 </Label>
                 <Combobox
                   data={frameworks}
-                  type="project-manager"
+                  type="Project Manager"
                   value={projectManager}
                   onValueChange={setProjectManager}
                 >
