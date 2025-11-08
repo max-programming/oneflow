@@ -11,6 +11,7 @@ export type ProjectStatusEnum =
 export const projects = pgTable("projects", {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
+  description: text(),
   status: text()
     .notNull()
     .$type<ProjectStatusEnum>()
@@ -37,7 +38,7 @@ export const projectTasks = pgTable("project_tasks", {
   description: text(),
   startDate: date().notNull(),
   dueDate: date().notNull(),
-  assigneeId: text()
+  assigneeId: uuid()
     .notNull()
     .references(() => users.id),
   createdAt: timestamp().notNull().defaultNow(),

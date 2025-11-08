@@ -15,6 +15,13 @@
       "when": 1762578090073,
       "tag": "0001_dusty_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1762582212421,
+      "tag": "0002_loose_puck",
+      "breakpoints": true
     }
   ]
 }
