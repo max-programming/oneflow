@@ -58,7 +58,7 @@ export const signUpFn = createServerFn({ method: "POST" })
     z.object({
       name: z.string().min(1, "Name is required"),
       email: z.email(),
-      username: z.string().min(1, "Username is required"),
+      username: z.string().min(1, "Username is required").toLowerCase(),
       password: z.string().min(1, "Password is required"),
     }),
   )
