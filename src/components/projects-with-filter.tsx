@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "./ui/skeleton";
 import { Card } from "./ui/card";
+import { useRouteContext } from "@tanstack/react-router";
 
 type FilterType =
   | "all"
@@ -31,6 +32,7 @@ const filterLabels: Record<FilterType, string> = {
 };
 
 export function ProjectsWithFilter() {
+  const { session } = useRouteContext({ from: "__root__" });
   const [currentPage, setCurrentPage] = React.useState(1);
   const [filter, setFilter] = React.useState<FilterType>("all");
 
@@ -50,6 +52,10 @@ export function ProjectsWithFilter() {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [filter]);
+
+  const isAdminOrProjectManager =
+    session?.user?.role === "admin" ||
+    session?.user?.role === "project-manager";
 
   if (error) {
     return (
@@ -125,7 +131,11 @@ export function ProjectsWithFilter() {
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {data.projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                isAdminOrProjectManager={isAdminOrProjectManager}
+              />
             ))}
           </div>
 
