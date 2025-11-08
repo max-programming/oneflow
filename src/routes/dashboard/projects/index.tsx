@@ -7,43 +7,8 @@ import { getProjectsFn } from "@/server/projects";
 import {
   Card,
   CardContent,
-  CardFooter,
-  CardHeader,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ProjectCard } from "@/components/project-card";
-
-// Loading Skeleton Component
-function ProjectCardSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
-          <Skeleton className="h-6 w-20" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-        </div>
-        <div className="flex gap-1.5">
-          <Skeleton className="h-5 w-16" />
-          <Skeleton className="h-5 w-16" />
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Skeleton className="h-3 w-32" />
-      </CardFooter>
-    </Card>
-  );
-}
+import { ProjectCard, ProjectCardSkeleton } from "@/components/project-card";
 
 export const Route = createFileRoute("/dashboard/projects/")({
   component: RouteComponent,
@@ -82,9 +47,7 @@ function RouteComponent() {
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
                 triggerButton={
-                  <Button className="absolute top-6 right-6" variant="default">
-                    Create Project
-                  </Button>
+                  <Button variant="default">Create Project</Button>
                 }
               />
             )}
