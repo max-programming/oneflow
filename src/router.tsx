@@ -14,6 +14,7 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    defaultViewTransition: true,
   });
   setupRouterSsrQueryIntegration({
     router,

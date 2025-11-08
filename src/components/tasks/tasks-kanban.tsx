@@ -8,7 +8,7 @@ import {
   type DragEndEvent,
 } from "@/components/kibo-ui/kanban";
 import { TaskCard, type TaskData } from "./task-card";
-import { getProjectTasksFn, updateProjectTaskFn } from "@/server/tasks";
+import { getProjectTasksFn, updateTaskStatusFn } from "@/server/tasks";
 import { TaskStatusEnum } from "@/db/tables/projects";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -97,7 +97,7 @@ export function TasksKanban({
 
   // Update task status mutation
   const updateTaskMutation = useMutation({
-    mutationFn: updateProjectTaskFn,
+    mutationFn: updateTaskStatusFn,
     onSuccess: (updatedTask) => {
       const columnName = KANBAN_COLUMNS.find(
         (col) => col.id === updatedTask.status,

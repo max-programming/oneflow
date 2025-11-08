@@ -13,6 +13,7 @@ import {
   allRoles,
   authMiddleware,
   projectManagerOrAdmin,
+  teamMemberAccess,
 } from "./auth-middleware";
 
 // Create Project Task - Project Managers and Admins can create tasks
@@ -786,7 +787,7 @@ export const getProjectManagerTasksFn = createServerFn({ method: "GET" })
 
 // Update Task Status - Project Managers and Admins
 export const updateTaskStatusFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware, projectManagerOrAdmin])
+  .middleware([authMiddleware, teamMemberAccess])
   .inputValidator(
     z.object({
       taskId: z.uuid("Invalid task ID"),
@@ -823,7 +824,20 @@ export const updateTaskStatusFn = createServerFn({ method: "POST" })
     }
 
     // Check if user is project manager or admin
-    verifyProjectManager(session.user.id, session.user.role, project.managerId);
+    if (session.user.id !== project.managerId && (session.user.role !== "admin" && session.user.role !== "team-member")) {
+      throw new Error("You are not authorized to update this task");
+    }
+
+    if (session.user.role === 'team-member') {
+      const [assigneeId] = await db
+        .select({ assigneeId: projectTaskAssignees.userId })
+        .from(projectTaskAssignees)
+        .where(and(eq(projectTaskAssignees.taskId, data.taskId), eq(projectTaskAssignees.userId, session.user.id)));
+
+      if (!assigneeId) {
+        throw new Error("You are not authorized to update this task");
+      }
+    }
 
     const [updatedTask] = await db
       .update(projectTasks)
