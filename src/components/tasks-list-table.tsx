@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import {
   getProjectManagerTasksFn,
   getTeamMemberTasksFn,
+  getAdminTasksFn,
   updateTaskStatusFn,
 } from "@/server/tasks";
 import { AssigneeAvatars } from "./assignee-avatars";
@@ -32,7 +33,7 @@ import type { TaskStatusEnum } from "@/db/schema";
 
 interface TasksListTableProps {
   limit?: number;
-  userRole?: "project-manager" | "team-member";
+  userRole?: "project-manager" | "team-member" | "admin";
 }
 
 export function TasksListTable({
@@ -44,24 +45,38 @@ export function TasksListTable({
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
-      userRole === "team-member" ? "tm-tasks" : "pm-tasks",
+      userRole === "team-member"
+        ? "tm-tasks"
+        : userRole === "admin"
+          ? "admin-tasks"
+          : "pm-tasks",
       currentPage,
       limit,
     ],
-    queryFn: () =>
-      userRole === "team-member"
-        ? getTeamMemberTasksFn({
-            data: {
-              page: currentPage,
-              limit,
-            },
-          })
-        : getProjectManagerTasksFn({
-            data: {
-              page: currentPage,
-              limit,
-            },
-          }),
+    queryFn: () => {
+      if (userRole === "team-member") {
+        return getTeamMemberTasksFn({
+          data: {
+            page: currentPage,
+            limit,
+          },
+        });
+      } else if (userRole === "admin") {
+        return getAdminTasksFn({
+          data: {
+            page: currentPage,
+            limit,
+          },
+        });
+      } else {
+        return getProjectManagerTasksFn({
+          data: {
+            page: currentPage,
+            limit,
+          },
+        });
+      }
+    },
   });
 
   const updateStatusMutation = useMutation({

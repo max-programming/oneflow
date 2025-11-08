@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getFilteredProjectsFn,
   getTeamMemberFilteredProjectsFn,
+  getAdminFilteredProjectsFn,
 } from "@/server/projects";
 import { ProjectCard } from "./project-card";
 import { Pagination } from "./ui/pagination";
@@ -35,7 +36,7 @@ const filterLabels: Record<FilterType, string> = {
 };
 
 interface ProjectsWithFilterProps {
-  userRole?: "project-manager" | "team-member";
+  userRole?: "project-manager" | "team-member" | "admin";
 }
 
 export function ProjectsWithFilter({
@@ -47,26 +48,41 @@ export function ProjectsWithFilter({
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
-      userRole === "team-member" ? "tm-filtered-projects" : "filtered-projects",
+      userRole === "team-member"
+        ? "tm-filtered-projects"
+        : userRole === "admin"
+          ? "admin-filtered-projects"
+          : "filtered-projects",
       currentPage,
       filter,
     ],
-    queryFn: () =>
-      userRole === "team-member"
-        ? getTeamMemberFilteredProjectsFn({
-            data: {
-              page: currentPage,
-              limit: 6,
-              filter,
-            },
-          })
-        : getFilteredProjectsFn({
-            data: {
-              page: currentPage,
-              limit: 6,
-              filter,
-            },
-          }),
+    queryFn: () => {
+      if (userRole === "team-member") {
+        return getTeamMemberFilteredProjectsFn({
+          data: {
+            page: currentPage,
+            limit: 6,
+            filter,
+          },
+        });
+      } else if (userRole === "admin") {
+        return getAdminFilteredProjectsFn({
+          data: {
+            page: currentPage,
+            limit: 6,
+            filter,
+          },
+        });
+      } else {
+        return getFilteredProjectsFn({
+          data: {
+            page: currentPage,
+            limit: 6,
+            filter,
+          },
+        });
+      }
+    },
   });
 
   // Reset to page 1 when filter changes

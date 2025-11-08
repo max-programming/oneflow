@@ -791,6 +791,108 @@ export const getProjectManagerTasksFn = createServerFn({ method: "GET" })
     };
   });
 
+// Get Admin Tasks - For admins to see all system tasks
+export const getAdminTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      page: z.number().default(1),
+      limit: z.number().default(10),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    // Verify user is admin
+    if (context.user.role !== "admin") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    const { page, limit } = data;
+    const offset = (page - 1) * limit;
+
+    // Get all tasks across the entire system
+    const allTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        taskCreatedAt: projectTasks.createdAt,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(and(isNull(projectTasks.deletedAt), isNull(projects.deletedAt)))
+      .orderBy(desc(projectTasks.dueDate));
+
+    const totalCount = allTasks.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedTasks = allTasks.slice(offset, offset + limit);
+
+    // Get assignees for the paginated tasks
+    const taskIds = paginatedTasks.map((task) => task.taskId);
+
+    const assignees =
+      taskIds.length > 0
+        ? await db
+            .select({
+              taskId: projectTaskAssignees.taskId,
+              userId: users.id,
+              userName: users.name,
+              userEmail: users.email,
+              userRole: users.role,
+            })
+            .from(projectTaskAssignees)
+            .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+            .where(inArray(projectTaskAssignees.taskId, taskIds))
+        : [];
+
+    // Group assignees by taskId
+    const assigneesByTask = assignees.reduce(
+      (acc, assignee) => {
+        if (!acc[assignee.taskId]) {
+          acc[assignee.taskId] = [];
+        }
+        acc[assignee.taskId].push({
+          userId: assignee.userId,
+          userName: assignee.userName,
+          userEmail: assignee.userEmail,
+          userRole: assignee.userRole,
+        });
+        return acc;
+      },
+      {} as Record<
+        string,
+        Array<{
+          userId: string;
+          userName: string | null;
+          userEmail: string | null;
+          userRole: string | null;
+        }>
+      >,
+    );
+
+    // Attach assignees to tasks
+    const tasksWithAssignees = paginatedTasks.map((task) => ({
+      ...task,
+      assignees: assigneesByTask[task.taskId] || [],
+    }));
+
+    return {
+      tasks: tasksWithAssignees,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  });
+
 // Get Team Member Tasks - For authenticated team members
 export const getTeamMemberTasksFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
@@ -975,6 +1077,177 @@ export const updateTaskStatusFn = createServerFn({ method: "POST" })
     return updatedTask;
   });
 
+// Get Filtered Project Manager Tasks - For PMs with filtering options
+export const getFilteredProjectManagerTasksFn = createServerFn({
+  method: "GET",
+})
+  .middleware([authMiddleware, projectManagerOrAdmin])
+  .inputValidator(
+    z.object({
+      page: z.number().default(1),
+      limit: z.number().default(10),
+      filter: z
+        .enum([
+          "all",
+          "overdue",
+          "today",
+          "next-7-days",
+          "upcoming",
+          "completed",
+        ])
+        .default("all"),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const userId = context.user.id;
+    const { page, limit, filter } = data;
+    const offset = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    const sevenDaysStr = `${sevenDaysFromNow.getFullYear()}-${String(sevenDaysFromNow.getMonth() + 1).padStart(2, "0")}-${String(sevenDaysFromNow.getDate()).padStart(2, "0")}`;
+
+    // Get all tasks for projects managed by the PM
+    const allTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        taskCreatedAt: projectTasks.createdAt,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.managerId, userId),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .orderBy(desc(projectTasks.dueDate));
+
+    // Apply filters
+    let filteredTasks = allTasks;
+    if (filter === "overdue") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate < todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "today") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate === todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "next-7-days") {
+      filteredTasks = allTasks.filter(
+        (t) =>
+          t.taskDueDate >= todayStr &&
+          t.taskDueDate <= sevenDaysStr &&
+          t.taskStatus !== "done",
+      );
+    } else if (filter === "upcoming") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate > todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "completed") {
+      filteredTasks = allTasks.filter((t) => t.taskStatus === "done");
+    }
+
+    const totalCount = filteredTasks.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedTasks = filteredTasks.slice(offset, offset + limit);
+
+    // Get assignees for the paginated tasks
+    const taskIds = paginatedTasks.map((task) => task.taskId);
+
+    const assignees =
+      taskIds.length > 0
+        ? await db
+            .select({
+              taskId: projectTaskAssignees.taskId,
+              userId: users.id,
+              userName: users.name,
+              userEmail: users.email,
+              userRole: users.role,
+            })
+            .from(projectTaskAssignees)
+            .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+            .where(inArray(projectTaskAssignees.taskId, taskIds))
+        : [];
+
+    // Group assignees by taskId
+    const assigneesByTask = assignees.reduce(
+      (acc, assignee) => {
+        if (!acc[assignee.taskId]) {
+          acc[assignee.taskId] = [];
+        }
+        acc[assignee.taskId].push({
+          userId: assignee.userId,
+          userName: assignee.userName,
+          userEmail: assignee.userEmail,
+          userRole: assignee.userRole,
+        });
+        return acc;
+      },
+      {} as Record<
+        string,
+        Array<{
+          userId: string;
+          userName: string | null;
+          userEmail: string | null;
+          userRole: string | null;
+        }>
+      >,
+    );
+
+    // Attach assignees to tasks
+    const tasksWithAssignees = paginatedTasks.map((task) => ({
+      ...task,
+      assignees: assigneesByTask[task.taskId] || [],
+    }));
+
+    // Calculate counts for all filters
+    const counts = {
+      all: allTasks.length,
+      overdue: allTasks.filter(
+        (t) => t.taskDueDate < todayStr && t.taskStatus !== "done",
+      ).length,
+      today: allTasks.filter(
+        (t) => t.taskDueDate === todayStr && t.taskStatus !== "done",
+      ).length,
+      "next-7-days": allTasks.filter(
+        (t) =>
+          t.taskDueDate >= todayStr &&
+          t.taskDueDate <= sevenDaysStr &&
+          t.taskStatus !== "done",
+      ).length,
+      upcoming: allTasks.filter(
+        (t) => t.taskDueDate > todayStr && t.taskStatus !== "done",
+      ).length,
+      completed: allTasks.filter((t) => t.taskStatus === "done").length,
+    };
+
+    return {
+      tasks: tasksWithAssignees,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      counts,
+    };
+  });
+
 // Get Today's Tasks for Project Manager - For authenticated PMs
 export const getProjectManagerTodaysTasksFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, projectManagerOrAdmin])
@@ -1037,6 +1310,412 @@ export const getProjectManagerTodaysTasksFn = createServerFn({ method: "GET" })
     );
 
     return tasksWithAssignees;
+  });
+
+// Get Filtered Admin Tasks - For admins with filtering options
+export const getFilteredAdminTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      page: z.number().default(1),
+      limit: z.number().default(10),
+      filter: z
+        .enum([
+          "all",
+          "overdue",
+          "today",
+          "next-7-days",
+          "upcoming",
+          "completed",
+        ])
+        .default("all"),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    // Verify user is admin
+    if (context.user.role !== "admin") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    const { page, limit, filter } = data;
+    const offset = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    const sevenDaysStr = `${sevenDaysFromNow.getFullYear()}-${String(sevenDaysFromNow.getMonth() + 1).padStart(2, "0")}-${String(sevenDaysFromNow.getDate()).padStart(2, "0")}`;
+
+    // Get all tasks across the system
+    const allTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        taskCreatedAt: projectTasks.createdAt,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(and(isNull(projectTasks.deletedAt), isNull(projects.deletedAt)))
+      .orderBy(desc(projectTasks.dueDate));
+
+    // Apply filters
+    let filteredTasks = allTasks;
+    if (filter === "overdue") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate < todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "today") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate === todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "next-7-days") {
+      filteredTasks = allTasks.filter(
+        (t) =>
+          t.taskDueDate >= todayStr &&
+          t.taskDueDate <= sevenDaysStr &&
+          t.taskStatus !== "done",
+      );
+    } else if (filter === "upcoming") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate > todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "completed") {
+      filteredTasks = allTasks.filter((t) => t.taskStatus === "done");
+    }
+
+    const totalCount = filteredTasks.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedTasks = filteredTasks.slice(offset, offset + limit);
+
+    // Get assignees for the paginated tasks
+    const taskIds = paginatedTasks.map((task) => task.taskId);
+
+    const assignees =
+      taskIds.length > 0
+        ? await db
+            .select({
+              taskId: projectTaskAssignees.taskId,
+              userId: users.id,
+              userName: users.name,
+              userEmail: users.email,
+              userRole: users.role,
+            })
+            .from(projectTaskAssignees)
+            .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+            .where(inArray(projectTaskAssignees.taskId, taskIds))
+        : [];
+
+    // Group assignees by taskId
+    const assigneesByTask = assignees.reduce(
+      (acc, assignee) => {
+        if (!acc[assignee.taskId]) {
+          acc[assignee.taskId] = [];
+        }
+        acc[assignee.taskId].push({
+          userId: assignee.userId,
+          userName: assignee.userName,
+          userEmail: assignee.userEmail,
+          userRole: assignee.userRole,
+        });
+        return acc;
+      },
+      {} as Record<
+        string,
+        Array<{
+          userId: string;
+          userName: string | null;
+          userEmail: string | null;
+          userRole: string | null;
+        }>
+      >,
+    );
+
+    // Attach assignees to tasks
+    const tasksWithAssignees = paginatedTasks.map((task) => ({
+      ...task,
+      assignees: assigneesByTask[task.taskId] || [],
+    }));
+
+    // Calculate counts for all filters
+    const counts = {
+      all: allTasks.length,
+      overdue: allTasks.filter(
+        (t) => t.taskDueDate < todayStr && t.taskStatus !== "done",
+      ).length,
+      today: allTasks.filter(
+        (t) => t.taskDueDate === todayStr && t.taskStatus !== "done",
+      ).length,
+      "next-7-days": allTasks.filter(
+        (t) =>
+          t.taskDueDate >= todayStr &&
+          t.taskDueDate <= sevenDaysStr &&
+          t.taskStatus !== "done",
+      ).length,
+      upcoming: allTasks.filter(
+        (t) => t.taskDueDate > todayStr && t.taskStatus !== "done",
+      ).length,
+      completed: allTasks.filter((t) => t.taskStatus === "done").length,
+    };
+
+    return {
+      tasks: tasksWithAssignees,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      counts,
+    };
+  });
+
+// Get Admin Today's Tasks - For admins to see all system tasks
+export const getAdminTodaysTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .handler(async ({ context }) => {
+    // Verify user is admin
+    if (context.user.role !== "admin") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    // Get all tasks due today OR overdue across the entire system (not done)
+    const todaysTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          or(
+            eq(projectTasks.dueDate, todayStr),
+            lt(projectTasks.dueDate, todayStr),
+          ),
+          ne(projectTasks.status, "done"),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .orderBy(projectTasks.dueDate);
+
+    // Get assignees for each task
+    const tasksWithAssignees = await Promise.all(
+      todaysTasks.map(async (task) => {
+        const assignees = await db
+          .select({
+            userId: users.id,
+            userName: users.name,
+            userEmail: users.email,
+            userRole: users.role,
+          })
+          .from(projectTaskAssignees)
+          .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+          .where(eq(projectTaskAssignees.taskId, task.taskId));
+
+        return {
+          ...task,
+          assignees,
+        };
+      }),
+    );
+
+    return tasksWithAssignees;
+  });
+
+// Get Filtered Team Member Tasks - For team members with filtering options
+export const getFilteredTeamMemberTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      page: z.number().default(1),
+      limit: z.number().default(10),
+      filter: z
+        .enum([
+          "all",
+          "overdue",
+          "today",
+          "next-7-days",
+          "upcoming",
+          "completed",
+        ])
+        .default("all"),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const userId = context.user.id;
+    const { page, limit, filter } = data;
+    const offset = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    const sevenDaysStr = `${sevenDaysFromNow.getFullYear()}-${String(sevenDaysFromNow.getMonth() + 1).padStart(2, "0")}-${String(sevenDaysFromNow.getDate()).padStart(2, "0")}`;
+
+    // Get all tasks assigned to the user
+    const allTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        taskCreatedAt: projectTasks.createdAt,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(
+        projectTaskAssignees,
+        eq(projectTasks.id, projectTaskAssignees.taskId),
+      )
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          eq(projectTaskAssignees.userId, userId),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .orderBy(desc(projectTasks.dueDate));
+
+    // Apply filters
+    let filteredTasks = allTasks;
+    if (filter === "overdue") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate < todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "today") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate === todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "next-7-days") {
+      filteredTasks = allTasks.filter(
+        (t) =>
+          t.taskDueDate >= todayStr &&
+          t.taskDueDate <= sevenDaysStr &&
+          t.taskStatus !== "done",
+      );
+    } else if (filter === "upcoming") {
+      filteredTasks = allTasks.filter(
+        (t) => t.taskDueDate > todayStr && t.taskStatus !== "done",
+      );
+    } else if (filter === "completed") {
+      filteredTasks = allTasks.filter((t) => t.taskStatus === "done");
+    }
+
+    const totalCount = filteredTasks.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedTasks = filteredTasks.slice(offset, offset + limit);
+
+    // Get assignees for the paginated tasks
+    const taskIds = paginatedTasks.map((task) => task.taskId);
+
+    const assignees =
+      taskIds.length > 0
+        ? await db
+            .select({
+              taskId: projectTaskAssignees.taskId,
+              userId: users.id,
+              userName: users.name,
+              userEmail: users.email,
+              userRole: users.role,
+            })
+            .from(projectTaskAssignees)
+            .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+            .where(inArray(projectTaskAssignees.taskId, taskIds))
+        : [];
+
+    // Group assignees by taskId
+    const assigneesByTask = assignees.reduce(
+      (acc, assignee) => {
+        if (!acc[assignee.taskId]) {
+          acc[assignee.taskId] = [];
+        }
+        acc[assignee.taskId].push({
+          userId: assignee.userId,
+          userName: assignee.userName,
+          userEmail: assignee.userEmail,
+          userRole: assignee.userRole,
+        });
+        return acc;
+      },
+      {} as Record<
+        string,
+        Array<{
+          userId: string;
+          userName: string | null;
+          userEmail: string | null;
+          userRole: string | null;
+        }>
+      >,
+    );
+
+    // Attach assignees to tasks
+    const tasksWithAssignees = paginatedTasks.map((task) => ({
+      ...task,
+      assignees: assigneesByTask[task.taskId] || [],
+    }));
+
+    // Calculate counts for all filters
+    const counts = {
+      all: allTasks.length,
+      overdue: allTasks.filter(
+        (t) => t.taskDueDate < todayStr && t.taskStatus !== "done",
+      ).length,
+      today: allTasks.filter(
+        (t) => t.taskDueDate === todayStr && t.taskStatus !== "done",
+      ).length,
+      "next-7-days": allTasks.filter(
+        (t) =>
+          t.taskDueDate >= todayStr &&
+          t.taskDueDate <= sevenDaysStr &&
+          t.taskStatus !== "done",
+      ).length,
+      upcoming: allTasks.filter(
+        (t) => t.taskDueDate > todayStr && t.taskStatus !== "done",
+      ).length,
+      completed: allTasks.filter((t) => t.taskStatus === "done").length,
+    };
+
+    return {
+      tasks: tasksWithAssignees,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      counts,
+    };
   });
 
 // Get Team Member Today's Tasks - For authenticated team members

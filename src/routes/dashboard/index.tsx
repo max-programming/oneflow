@@ -2,17 +2,19 @@ import { SectionCards } from "@/components/section-cards";
 import { ProjectStatusChart } from "@/components/project-status-chart";
 import { TodaysTasks } from "@/components/todays-tasks";
 import { ProjectsWithFilter } from "@/components/projects-with-filter";
-import { TasksListTable } from "@/components/tasks-list-table";
+import { TasksOverview } from "@/components/tasks-overview";
 import { DashboardFinancialSummary } from "@/components/dashboard-financial-summary";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   getProjectManagerDashboardFn,
   getTeamMemberDashboardFn,
+  getAdminDashboardFn,
 } from "@/server/projects";
 import {
   getProjectManagerTodaysTasksFn,
   getTeamMemberTodaysTasksFn,
+  getAdminTodaysTasksFn,
 } from "@/server/tasks";
 
 export const Route = createFileRoute("/dashboard/")({
@@ -68,16 +70,86 @@ function RouteComponent() {
     enabled: isTeamMember,
   });
 
+  // Admin Dashboard Data
+  const {
+    data: adminDashboardData,
+    isLoading: isAdminDashboardLoading,
+    error: adminDashboardError,
+  } = useQuery({
+    queryKey: ["admin-dashboard"],
+    queryFn: () => getAdminDashboardFn(),
+    enabled: isAdmin,
+  });
+
+  const {
+    data: adminTodaysTasks,
+    isLoading: isAdminTasksLoading,
+    error: adminTasksError,
+  } = useQuery({
+    queryKey: ["admin-todays-tasks"],
+    queryFn: () => getAdminTodaysTasksFn(),
+    enabled: isAdmin,
+  });
+
+  // Admin Dashboard
   if (isAdmin) {
     return (
-      <div className="flex flex-1 flex-col p-8">
+      <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2">
           <div className="flex flex-col gap-8 py-4 md:gap-10 md:py-6">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Admin Dashboard
-            </h1>
+            {/* Header */}
+            <div className="px-4 lg:px-6">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Admin Dashboard
+              </h1>
+              <p className="text-muted-foreground">
+                Overview of all projects and tasks across the entire system
+              </p>
+            </div>
+
+            {/* Statistics Cards */}
+            <SectionCards
+              statistics={adminDashboardData?.statistics}
+              isLoading={isAdminDashboardLoading}
+            />
+
+            {/* Financial Summary */}
+            <DashboardFinancialSummary />
+
+            {/* Today's Tasks and Status Chart */}
+            <div className="grid grid-cols-1 gap-4 px-4 lg:grid-cols-2 lg:px-6">
+              <TodaysTasks
+                tasks={adminTodaysTasks}
+                isLoading={isAdminTasksLoading}
+              />
+              <ProjectStatusChart
+                statusDistribution={adminDashboardData?.statusDistribution}
+                isLoading={isAdminDashboardLoading}
+              />
+            </div>
+
+            {/* Projects Section with Filter and Pagination */}
+            <div className="px-4 lg:px-6">
+              <ProjectsWithFilter userRole="admin" />
+            </div>
+
+            {/* Tasks Overview with Filters */}
+            <div className="px-4 lg:px-6">
+              <TasksOverview userRole="admin" />
+            </div>
+
+            {/* Error States */}
+            {(adminDashboardError || adminTasksError) && (
+              <div className="px-4 lg:px-6">
+                <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
+                  <p className="font-semibold">Error loading dashboard data</p>
+                  <p className="text-sm">
+                    {adminDashboardError?.message || adminTasksError?.message}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          <p>WIP...</p>
         </div>
       </div>
     );
@@ -119,9 +191,9 @@ function RouteComponent() {
               <ProjectsWithFilter userRole="team-member" />
             </div>
 
-            {/* Tasks List Table */}
+            {/* Tasks Overview with Filters */}
             <div className="px-4 lg:px-6">
-              <TasksListTable limit={10} userRole="team-member" />
+              <TasksOverview userRole="team-member" />
             </div>
 
             {/* Error States */}
@@ -179,9 +251,9 @@ function RouteComponent() {
             <ProjectsWithFilter userRole="project-manager" />
           </div>
 
-          {/* Tasks List Table */}
+          {/* Tasks Overview with Filters */}
           <div className="px-4 lg:px-6">
-            <TasksListTable limit={10} userRole="project-manager" />
+            <TasksOverview userRole="project-manager" />
           </div>
 
           {/* Error States */}

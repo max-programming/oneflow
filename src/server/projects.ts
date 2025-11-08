@@ -1,6 +1,11 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { customers, projects, projectTasks, projectTaskAssignees } from "@/db/tables/projects";
+import {
+  customers,
+  projects,
+  projectTasks,
+  projectTaskAssignees,
+} from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
 import {
   and,
@@ -688,7 +693,9 @@ export const getTeamMemberDashboardFn = createServerFn({ method: "GET" })
         projectId: projectTasks.projectId,
       })
       .from(projectTasks)
-      .where(and(inArray(projectTasks.id, taskIds), isNull(projectTasks.deletedAt)));
+      .where(
+        and(inArray(projectTasks.id, taskIds), isNull(projectTasks.deletedAt)),
+      );
 
     const projectIds = [...new Set(assignedTasks.map((t) => t.projectId))];
 
@@ -848,6 +855,278 @@ export const getTeamMemberDashboardFn = createServerFn({ method: "GET" })
     };
   });
 
+// Get Admin Dashboard Data - For admins to see all system data
+export const getAdminDashboardFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .handler(async ({ context }) => {
+    // Verify user is admin
+    if (context.user.role !== "admin") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    // Get all projects
+    const allProjects = await db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        managerId: projects.managerId,
+        managerName: users.name,
+        managerEmail: users.email,
+        managerRole: users.role,
+        startDate: projects.startDate,
+        deadlineDate: projects.deadlineDate,
+        customerId: projects.customerId,
+        customerName: customers.name,
+        customerEmail: customers.email,
+        customerPhone: customers.phone,
+        tags: projects.tags,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+      })
+      .from(projects)
+      .leftJoin(customers, eq(projects.customerId, customers.id))
+      .leftJoin(users, eq(projects.managerId, users.id))
+      .where(isNull(projects.deletedAt))
+      .orderBy(projects.createdAt);
+
+    // Calculate statistics
+    const totalProjects = allProjects.length;
+
+    const activeProjects = allProjects.filter(
+      (p) => p.status === "in-progress",
+    ).length;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    const projectsNearingDeadline = allProjects.filter((p) => {
+      if (!p.deadlineDate) return false;
+      const deadline = new Date(p.deadlineDate);
+      return (
+        deadline >= today &&
+        deadline <= sevenDaysFromNow &&
+        p.status !== "completed" &&
+        p.status !== "cancelled"
+      );
+    }).length;
+
+    const overdueProjects = allProjects.filter((p) => {
+      if (!p.deadlineDate) return false;
+      const deadline = new Date(p.deadlineDate);
+      return (
+        deadline < today && p.status !== "completed" && p.status !== "cancelled"
+      );
+    }).length;
+
+    // Status distribution
+    const statusDistribution = {
+      "in-progress": 0,
+      "waiting-to-start": 0,
+      completed: 0,
+      cancelled: 0,
+      "on-hold": 0,
+    };
+
+    allProjects.forEach((p) => {
+      if (p.status && statusDistribution[p.status] !== undefined) {
+        statusDistribution[p.status]++;
+      }
+    });
+
+    // Get urgent projects (deadline within 7 days)
+    const urgentProjects = allProjects
+      .filter((p) => {
+        if (!p.deadlineDate) return false;
+        const deadline = new Date(p.deadlineDate);
+        return (
+          deadline >= today &&
+          deadline <= sevenDaysFromNow &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
+      })
+      .sort((a, b) => {
+        if (!a.deadlineDate || !b.deadlineDate) return 0;
+        return (
+          new Date(a.deadlineDate).getTime() -
+          new Date(b.deadlineDate).getTime()
+        );
+      });
+
+    // Get overdue projects
+    const overdueProjectsList = allProjects
+      .filter((p) => {
+        if (!p.deadlineDate) return false;
+        const deadline = new Date(p.deadlineDate);
+        return (
+          deadline < today &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
+      })
+      .sort((a, b) => {
+        if (!a.deadlineDate || !b.deadlineDate) return 0;
+        return (
+          new Date(a.deadlineDate).getTime() -
+          new Date(b.deadlineDate).getTime()
+        );
+      });
+
+    // Get recent projects (recently updated)
+    const recentProjects = [...allProjects]
+      .sort((a, b) => {
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 6);
+
+    return {
+      statistics: {
+        totalProjects,
+        activeProjects,
+        projectsNearingDeadline,
+        overdueProjects,
+      },
+      statusDistribution,
+      urgentProjects,
+      overdueProjects: overdueProjectsList,
+      recentProjects,
+    };
+  });
+
+// Get Filtered Projects for Admin - For admins to see all projects
+export const getAdminFilteredProjectsFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      page: z.number().default(1),
+      limit: z.number().default(6),
+      filter: z
+        .enum(["all", "overdue", "nearing", "active", "completed", "on-hold"])
+        .default("all"),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    // Verify user is admin
+    if (context.user.role !== "admin") {
+      throw new Error("Unauthorized: Admin access required");
+    }
+
+    const { page, limit, filter } = data;
+    const offset = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    // Get all projects across the system
+    const allProjects = await db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        managerId: projects.managerId,
+        managerName: users.name,
+        managerEmail: users.email,
+        managerRole: users.role,
+        startDate: projects.startDate,
+        deadlineDate: projects.deadlineDate,
+        customerId: projects.customerId,
+        customerName: customers.name,
+        customerEmail: customers.email,
+        customerPhone: customers.phone,
+        tags: projects.tags,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+      })
+      .from(projects)
+      .leftJoin(customers, eq(projects.customerId, customers.id))
+      .leftJoin(users, eq(projects.managerId, users.id))
+      .where(isNull(projects.deletedAt))
+      .orderBy(desc(projects.createdAt));
+
+    // Apply filters
+    let filteredProjects = allProjects;
+    if (filter === "overdue") {
+      filteredProjects = allProjects.filter((p) => {
+        if (!p.deadlineDate) return false;
+        const deadline = new Date(p.deadlineDate);
+        return (
+          deadline < today &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
+      });
+    } else if (filter === "nearing") {
+      filteredProjects = allProjects.filter((p) => {
+        if (!p.deadlineDate) return false;
+        const deadline = new Date(p.deadlineDate);
+        return (
+          deadline >= today &&
+          deadline <= sevenDaysFromNow &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
+      });
+    } else if (filter === "active") {
+      filteredProjects = allProjects.filter((p) => p.status === "in-progress");
+    } else if (filter === "completed") {
+      filteredProjects = allProjects.filter((p) => p.status === "completed");
+    } else if (filter === "on-hold") {
+      filteredProjects = allProjects.filter((p) => p.status === "on-hold");
+    }
+
+    const totalCount = filteredProjects.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedProjects = filteredProjects.slice(offset, offset + limit);
+
+    // Calculate counts for all filters
+    const counts = {
+      all: allProjects.length,
+      overdue: allProjects.filter((p) => {
+        if (!p.deadlineDate) return false;
+        const deadline = new Date(p.deadlineDate);
+        return (
+          deadline < today &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
+      }).length,
+      nearing: allProjects.filter((p) => {
+        if (!p.deadlineDate) return false;
+        const deadline = new Date(p.deadlineDate);
+        return (
+          deadline >= today &&
+          deadline <= sevenDaysFromNow &&
+          p.status !== "completed" &&
+          p.status !== "cancelled"
+        );
+      }).length,
+      active: allProjects.filter((p) => p.status === "in-progress").length,
+      completed: allProjects.filter((p) => p.status === "completed").length,
+      "on-hold": allProjects.filter((p) => p.status === "on-hold").length,
+    };
+
+    return {
+      projects: paginatedProjects,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      counts,
+    };
+  });
+
 // Get Filtered Projects for Team Member - For authenticated team members
 export const getTeamMemberFilteredProjectsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
@@ -908,7 +1187,9 @@ export const getTeamMemberFilteredProjectsFn = createServerFn({ method: "GET" })
         projectId: projectTasks.projectId,
       })
       .from(projectTasks)
-      .where(and(inArray(projectTasks.id, taskIds), isNull(projectTasks.deletedAt)));
+      .where(
+        and(inArray(projectTasks.id, taskIds), isNull(projectTasks.deletedAt)),
+      );
 
     const projectIds = [...new Set(assignedTasks.map((t) => t.projectId))];
 
