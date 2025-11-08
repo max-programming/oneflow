@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { UserManagementTable } from "@/components/user-management-table";
+import { CustomerManagementTable } from "@/components/customer-management-table";
 
-export const Route = createFileRoute("/dashboard/admin/users/")({
+export const Route = createFileRoute("/dashboard/admin/customers")({
   component: RouteComponent,
 });
 
@@ -12,14 +12,14 @@ function RouteComponent() {
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">
-              User Management
+              Customer Management
             </h2>
             <p className="text-muted-foreground">
-              Manage user accounts, roles, and permissions
+              Manage customer accounts, information, and relationships
             </p>
           </div>
         </div>
-        <UserManagementTable />
+        <CustomerManagementTable />
       </div>
     </div>
   );

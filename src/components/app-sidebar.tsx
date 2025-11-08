@@ -8,6 +8,7 @@ import {
   IconShield,
   IconUsers,
   IconUserCog,
+  IconAddressBook,
 } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 
@@ -59,6 +60,11 @@ const data = {
       title: "User Management",
       url: "/dashboard/admin/users",
       icon: IconUserCog,
+    },
+    {
+      title: "Customer Management",
+      url: "/dashboard/admin/customers",
+      icon: IconAddressBook,
     },
   ],
 };

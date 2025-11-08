@@ -4,11 +4,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, or, desc } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { adminOnly, authMiddleware } from "./auth-middleware";
 
-export const getUsersFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    // await validateAdminAccess();
-
+export const getUsersFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, adminOnly])
+  .handler(async () => {
     const usersList = await db
       .select({
         id: users.id,
@@ -25,8 +25,7 @@ export const getUsersFn = createServerFn({ method: "GET" }).handler(
     return {
       users: usersList,
     };
-  },
-);
+  });
 
 export const updateUserRoleFn = createServerFn({ method: "POST" })
   .inputValidator(
@@ -40,14 +39,15 @@ export const updateUserRoleFn = createServerFn({ method: "POST" })
       ]),
     }),
   )
-  .handler(async ({ data }) => {
-    // const currentUser = await validateAdminAccess();
+  .middleware([authMiddleware, adminOnly])
+  .handler(async ({ data, context }) => {
+    const currentUser = context.user;
     const { userId, role } = data;
 
     // Prevent admin from changing their own role
-    // if (currentUser.id === userId) {
-    //   throw new Error("Cannot change your own role");
-    // }
+    if (currentUser.id === userId) {
+      throw new Error("Cannot change your own role");
+    }
 
     const [updatedUser] = await db
       .update(users)
@@ -81,8 +81,8 @@ export const updateUserFn = createServerFn({ method: "POST" })
         .optional(),
     }),
   )
+  .middleware([authMiddleware, adminOnly])
   .handler(async ({ data }) => {
-    // const currentUser = await validateAdminAccess();
     const { userId, name, email, role } = data;
 
     // Check if email is already in use by another user
@@ -126,43 +126,6 @@ export const updateUserFn = createServerFn({ method: "POST" })
     return updatedUser;
   });
 
-export const updateUserStatusFn = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      userId: z.string(),
-      emailVerified: z.boolean(),
-    }),
-  )
-  .handler(async ({ data }) => {
-    // const currentUser = await validateAdminAccess();
-    const { userId, emailVerified } = data;
-
-    // Prevent admin from changing their own status
-    // if (currentUser.id === userId) {
-    //   throw new Error("Cannot change your own status");
-    // }
-
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        emailVerified,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        emailVerified: users.emailVerified,
-      });
-
-    if (!updatedUser) {
-      throw new Error("User not found");
-    }
-
-    return updatedUser;
-  });
-
 export const createUserFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
@@ -175,9 +138,8 @@ export const createUserFn = createServerFn({ method: "POST" })
         .default("team-member"),
     }),
   )
+  .middleware([authMiddleware, adminOnly])
   .handler(async ({ data }) => {
-    // await validateAdminAccess();
-
     const { name, email, username, password, role } = data;
 
     // Check if user already exists
@@ -234,14 +196,15 @@ export const deleteUserFn = createServerFn({ method: "POST" })
       userId: z.string(),
     }),
   )
-  .handler(async ({ data }) => {
-    // const currentUser = await validateAdminAccess();
+  .middleware([authMiddleware, adminOnly])
+  .handler(async ({ data, context }) => {
+    const currentUser = context.user;
     const { userId } = data;
 
     // Prevent admin from deleting themselves
-    // if (currentUser.id === userId) {
-    //   throw new Error("Cannot delete your own account");
-    // }
+    if (currentUser.id === userId) {
+      throw new Error("Cannot delete your own account");
+    }
 
     // Check if user exists
     const [userToDelete] = await db
