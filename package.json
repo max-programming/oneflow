@@ -15,7 +15,9 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
-    "db:drop": "drizzle-kit drop"
+    "db:drop": "drizzle-kit drop",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:fix-status": "tsx scripts/fix-task-status.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

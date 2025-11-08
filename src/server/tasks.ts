@@ -7,7 +7,7 @@ import {
   projects,
 } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -611,3 +611,220 @@ async function verifyProjectManager(
     );
   }
 }
+
+// Get All Tasks for Project Manager - For authenticated PMs
+export const getProjectManagerTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, projectManagerOrAdmin])
+  .inputValidator(
+    z.object({
+      page: z.number().default(1),
+      limit: z.number().default(10),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const userId = context.user.id;
+    const { page, limit } = data;
+    const offset = (page - 1) * limit;
+
+    // Get all tasks for projects managed by the PM
+    const allTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        taskCreatedAt: projectTasks.createdAt,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.managerId, userId),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .orderBy(desc(projectTasks.dueDate));
+
+    const totalCount = allTasks.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedTasks = allTasks.slice(offset, offset + limit);
+
+    // Get assignees for the paginated tasks
+    const taskIds = paginatedTasks.map((task) => task.taskId);
+
+    const assignees =
+      taskIds.length > 0
+        ? await db
+            .select({
+              taskId: projectTaskAssignees.taskId,
+              userId: users.id,
+              userName: users.name,
+              userEmail: users.email,
+              userRole: users.role,
+            })
+            .from(projectTaskAssignees)
+            .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+            .where(inArray(projectTaskAssignees.taskId, taskIds))
+        : [];
+
+    // Group assignees by taskId
+    const assigneesByTask = assignees.reduce(
+      (acc, assignee) => {
+        if (!acc[assignee.taskId]) {
+          acc[assignee.taskId] = [];
+        }
+        acc[assignee.taskId].push({
+          userId: assignee.userId,
+          userName: assignee.userName,
+          userEmail: assignee.userEmail,
+          userRole: assignee.userRole,
+        });
+        return acc;
+      },
+      {} as Record<
+        string,
+        Array<{
+          userId: string;
+          userName: string | null;
+          userEmail: string | null;
+          userRole: string | null;
+        }>
+      >,
+    );
+
+    // Attach assignees to tasks
+    const tasksWithAssignees = paginatedTasks.map((task) => ({
+      ...task,
+      assignees: assigneesByTask[task.taskId] || [],
+    }));
+
+    return {
+      tasks: tasksWithAssignees,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  });
+
+// Update Task Status - Project Managers and Admins
+export const updateTaskStatusFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware, projectManagerOrAdmin])
+  .inputValidator(
+    z.object({
+      taskId: z.uuid("Invalid task ID"),
+      status: z.enum(["waiting-to-start", "in-progress", "stuck", "done"]),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const session = context;
+
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get the task to find its projectId
+    const [task] = await db
+      .select({ projectId: projectTasks.projectId })
+      .from(projectTasks)
+      .where(eq(projectTasks.id, data.taskId))
+      .limit(1);
+
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    // Get the project to check managerId
+    const [project] = await db
+      .select({ managerId: projects.managerId })
+      .from(projects)
+      .where(eq(projects.id, task.projectId))
+      .limit(1);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Check if user is project manager or admin
+    verifyProjectManager(session.user.id, session.user.role, project.managerId);
+
+    const [updatedTask] = await db
+      .update(projectTasks)
+      .set({ status: data.status })
+      .where(eq(projectTasks.id, data.taskId))
+      .returning();
+
+    if (!updatedTask) {
+      throw new Error("Failed to update task status");
+    }
+
+    return updatedTask;
+  });
+
+// Get Today's Tasks for Project Manager - For authenticated PMs
+export const getProjectManagerTodaysTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, projectManagerOrAdmin])
+  .handler(async ({ context }) => {
+    const userId = context.user.id;
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // Get all tasks due today for projects managed by the PM
+    const todaysTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.managerId, userId),
+          eq(projectTasks.dueDate, todayStr),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt)
+        )
+      )
+      .orderBy(projects.name);
+    
+    // Get assignees for each task
+    const tasksWithAssignees = await Promise.all(
+      todaysTasks.map(async (task) => {
+        const assignees = await db
+          .select({
+            userId: users.id,
+            userName: users.name,
+            userEmail: users.email,
+            userRole: users.role,
+          })
+          .from(projectTaskAssignees)
+          .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+          .where(eq(projectTaskAssignees.taskId, task.taskId));
+        
+        return {
+          ...task,
+          assignees,
+        };
+      })
+    );
+    
+    return tasksWithAssignees;
+  });

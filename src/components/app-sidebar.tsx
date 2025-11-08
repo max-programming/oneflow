@@ -5,6 +5,7 @@ import {
   IconShield,
   IconUserCog,
   IconAddressBook,
+  IconHome,
 } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 
@@ -25,6 +26,11 @@ import {
 
 const data = {
   navMain: [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: IconHome,
+    },
     {
       title: "Projects",
       url: "/dashboard/projects",
