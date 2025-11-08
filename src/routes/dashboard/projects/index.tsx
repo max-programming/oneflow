@@ -51,6 +51,9 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
+import { getCustomersFn } from "@/server/customer";
+import { createProjectFn, getProjectManagersFn } from "@/server/projects";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const defaultTags = [
   { id: "react", label: "React" },
@@ -67,33 +70,6 @@ const defaultTags = [
   { id: "csharp", label: "C#" },
   { id: "php", label: "PHP" },
   { id: "go", label: "Go" },
-];
-
-const frameworks = [
-  {
-    value: "next.js",
-    label: "Next.js",
-  },
-  {
-    value: "sveltekit",
-    label: "SvelteKit",
-  },
-  {
-    value: "nuxt.js",
-    label: "Nuxt.js",
-  },
-  {
-    value: "remix",
-    label: "Remix",
-  },
-  {
-    value: "astro",
-    label: "Astro",
-  },
-  {
-    value: "vite",
-    label: "Vite",
-  },
 ];
 
 const statusOptions = [
@@ -120,12 +96,15 @@ const statusOptions = [
 ];
 
 export const Route = createFileRoute("/dashboard/projects/")({
-  component: RouteComponent,
+    component: RouteComponent,
 });
 
 function RouteComponent() {
-  const location = useLocation();
+    const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
+  // Form state
   const [selected, setSelected] = useState<string[]>([]);
   const [newTag, setNewTag] = useState<string>("");
   const [tags, setTags] =
@@ -136,7 +115,36 @@ function RouteComponent() {
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [projectManager, setProjectManager] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
+  const [customer, setCustomer] = useState<string>("");
+  const [status, setStatus] = useState<string>("waiting-to-start");
+  const [projectName, setProjectName] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+
+  // Fetch project managers and customers
+  const { data: projectManagersData } = useQuery({
+    queryKey: ["project-managers"],
+    queryFn: () => getProjectManagersFn(),
+  });
+
+  const { data: customersData } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => getCustomersFn(),
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Format project managers and customers for combobox
+  const userOptions =
+    projectManagersData?.map((manager) => ({
+      value: manager.id,
+      label: manager.name,
+    })) || [];
+
+  const customerOptions =
+    customersData?.map((customer) => ({
+      value: customer.id,
+      label: customer.name,
+    })) || [];
 
   const handleRemove = (value: string) => {
     if (!selected.includes(value)) {
@@ -177,16 +185,70 @@ function RouteComponent() {
     <div className="relative p-6">
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            console.log("Form submitted");
-            setDialogOpen(false);
+            
+            // Validate required fields
+            if (!projectName.trim()) {
+              return;
+            }
+            if (!projectManager) {
+              return;
+            }
+            if (!customer) {
+              return;
+            }
+
+            // Format dates as YYYY-MM-DD strings
+            const formattedStartDate = startDate
+              ? startDate.toISOString().split("T")[0]
+              : undefined;
+            const formattedDeadlineDate = deadline
+              ? deadline.toISOString().split("T")[0]
+              : undefined;
+
+            // Get tag labels (not IDs) for storage
+            const tagLabels = selected
+              .map((tagId) => tags.find((t) => t.id === tagId)?.label)
+              .filter(Boolean) as string[];
+
+            setIsSubmitting(true);
+            try {
+              await createProjectFn({
+                data: {
+                  name: projectName.trim(),
+                  description: description.trim() || undefined,
+                  status: status as "in-progress" | "waiting-to-start" | "completed" | "cancelled" | "on-hold",
+                  managerId: projectManager,
+                  customerId: customer,
+                  startDate: formattedStartDate,
+                  deadlineDate: formattedDeadlineDate,
+                  tags: tagLabels,
+                },
+              });
+              
+              queryClient.invalidateQueries({ queryKey: ["projects"] });
+              setDialogOpen(false);
+              // Reset form
+              setProjectName("");
+              setDescription("");
+              setSelected([]);
+              setProjectManager("");
+              setCustomer("");
+              setStatus("waiting-to-start");
+              setStartDate(undefined);
+              setDeadline(undefined);
+            } catch (error) {
+              console.error("Failed to create project:", error);
+            } finally {
+              setIsSubmitting(false);
+            }
           }}
         >
           <DialogTrigger asChild>
             <Button className="absolute top-6 right-6" variant="default">
-              Create Project
-            </Button>
+            Create Project
+        </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto custom-scrollbar">
             <DialogHeader className="space-y-3 border-b pb-4">
@@ -218,14 +280,14 @@ function RouteComponent() {
                   ))}
                   <ChevronRight className="size-3.5" />
                   <span className="text-foreground font-medium">
-                    Create Project
+                                Create Project
                   </span>
                 </div>
-              </div>
+                            </div>
               <DialogTitle className="text-left text-2xl font-semibold">
                 Create New Project
               </DialogTitle>
-            </DialogHeader>
+          </DialogHeader>
 
             <div className="space-y-6 py-4">
               {/* Project Name */}
@@ -239,6 +301,8 @@ function RouteComponent() {
                   placeholder="Enter project name"
                   required
                   className="w-full"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
                 />
               </div>
 
@@ -311,10 +375,10 @@ function RouteComponent() {
                   htmlFor="project-manager"
                   className="text-sm font-medium"
                 >
-                  Project Manager
+                  Project Manager <span className="text-destructive">*</span>
                 </Label>
                 <Combobox
-                  data={frameworks}
+                  data={userOptions}
                   type="Project Manager"
                   value={projectManager}
                   onValueChange={setProjectManager}
@@ -325,12 +389,43 @@ function RouteComponent() {
                     <ComboboxEmpty />
                     <ComboboxList>
                       <ComboboxGroup>
-                        {frameworks.map((framework) => (
+                        {userOptions.map((user) => (
                           <ComboboxItem
-                            key={framework.value}
-                            value={framework.value}
+                            key={user.value}
+                            value={user.value}
                           >
-                            {framework.label}
+                            {user.label}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxGroup>
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </div>
+
+              {/* Customer */}
+              <div className="space-y-2">
+                <Label htmlFor="customer" className="text-sm font-medium">
+                  Customer <span className="text-destructive">*</span>
+                </Label>
+                <Combobox
+                  data={customerOptions}
+                  type="customer"
+                  value={customer}
+                  onValueChange={setCustomer}
+                >
+                  <ComboboxTrigger className="w-full" />
+                  <ComboboxContent>
+                    <ComboboxInput />
+                    <ComboboxEmpty />
+                    <ComboboxList>
+                      <ComboboxGroup>
+                        {customerOptions.map((customerOption) => (
+                          <ComboboxItem
+                            key={customerOption.value}
+                            value={customerOption.value}
+                          >
+                            {customerOption.label}
                           </ComboboxItem>
                         ))}
                       </ComboboxGroup>
@@ -454,7 +549,7 @@ function RouteComponent() {
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
-              </div>
+            </div>
 
               {/* Description */}
               <div className="space-y-2">
@@ -466,21 +561,28 @@ function RouteComponent() {
                   name="description"
                   placeholder="Type your description here..."
                   className="resize-none min-h-[100px]"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
-              </div>
             </div>
+          </div>
 
             <DialogFooter className="border-t pt-4 gap-2">
-              <DialogClose asChild>
+            <DialogClose asChild>
                 <Button type="button" variant="outline">
                   Discard
                 </Button>
-              </DialogClose>
-              <Button type="submit">Save Project</Button>
-            </DialogFooter>
-          </DialogContent>
-        </form>
-      </Dialog>
+            </DialogClose>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save Project"}
+              </Button>
+          </DialogFooter>
+        </DialogContent>
+      </form>
+    </Dialog>
     </div>
   );
 }
