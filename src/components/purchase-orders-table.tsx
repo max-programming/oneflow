@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -44,6 +44,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   getPurchaseOrdersFn,
@@ -57,14 +63,14 @@ type PurchaseOrders = Awaited<ReturnType<typeof getPurchaseOrdersFn>>;
 
 function PurchaseOrderCreateDialog() {
   const [open, setOpen] = React.useState(false);
+  const [orderDateOpen, setOrderDateOpen] = React.useState(false);
+  const [orderDate, setOrderDate] = React.useState<Date | undefined>(new Date());
   const [formData, setFormData] = React.useState({
     vendorId: "",
     projectId: "",
     description: "",
     amount: "",
     taxPercentage: "18",
-    orderDate: new Date().toISOString().split("T")[0],
-    status: "draft" as "draft" | "confirmed" | "done" | "cancelled",
   });
   const queryClient = useQueryClient();
 
@@ -86,9 +92,8 @@ function PurchaseOrderCreateDialog() {
         description: "",
         amount: "",
         taxPercentage: "18",
-        orderDate: new Date().toISOString().split("T")[0],
-        status: "draft",
       });
+      setOrderDate(new Date());
     }
   }, [open]);
 
@@ -109,7 +114,7 @@ function PurchaseOrderCreateDialog() {
   });
 
   function handleCreate() {
-    if (!formData.vendorId || !formData.amount || !formData.orderDate) {
+    if (!formData.vendorId || !formData.amount || !orderDate) {
       toast.error("Vendor, amount, and order date are required");
       return;
     }
@@ -117,7 +122,9 @@ function PurchaseOrderCreateDialog() {
     createMutation.mutate({
       data: {
         ...formData,
+        vendorId: parseInt(formData.vendorId),
         projectId: formData.projectId || null,
+        orderDate: orderDate.toISOString().split("T")[0],
       },
     });
   }
@@ -153,7 +160,7 @@ function PurchaseOrderCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {vendors?.map((vendor) => (
-                  <SelectItem key={vendor.id} value={vendor.id}>
+                  <SelectItem key={vendor.id} value={vendor.id.toString()}>
                     {vendor.name}
                   </SelectItem>
                 ))}
@@ -219,36 +226,33 @@ function PurchaseOrderCreateDialog() {
             <Label htmlFor="orderDate" className="text-right">
               Order Date *
             </Label>
-            <Input
-              id="orderDate"
-              type="date"
-              value={formData.orderDate}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, orderDate: e.target.value }))
-              }
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="status" className="text-right">
-              Status
-            </Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value: any) =>
-                setFormData((prev) => ({ ...prev, status: value }))
-              }
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover open={orderDateOpen} onOpenChange={setOrderDateOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                  {orderDate ? (
+                    orderDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">Select date</span>
+                  )}
+                  <IconCalendar className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={orderDate}
+                  onSelect={(date) => {
+                    setOrderDate(date);
+                    setOrderDateOpen(false);
+                  }}
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="description" className="text-right">
@@ -294,7 +298,7 @@ function PurchaseOrderDeleteDialog({
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (purchaseOrderId: string) =>
+    mutationFn: (purchaseOrderId: number) =>
       deletePurchaseOrderFn({ data: { purchaseOrderId } }),
     onSuccess: () => {
       toast.success("Purchase order deleted successfully");
@@ -366,15 +370,6 @@ export function PurchaseOrdersTable() {
     }
   }, [isError, error]);
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "outline"> = {
-      draft: "secondary",
-      confirmed: "default",
-      done: "outline",
-      cancelled: "outline",
-    };
-    return <Badge variant={variants[status] || "default"}>{status}</Badge>;
-  };
 
   return (
     <div className="space-y-4">
@@ -389,7 +384,6 @@ export function PurchaseOrdersTable() {
               <TableHead>Vendor</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -398,7 +392,7 @@ export function PurchaseOrdersTable() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
-                  {Array.from({ length: 7 }).map((_, cellIndex) => (
+                  {Array.from({ length: 6 }).map((_, cellIndex) => (
                     <TableCell key={cellIndex}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -407,7 +401,7 @@ export function PurchaseOrdersTable() {
               ))
             ) : !purchaseOrders || purchaseOrders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No purchase orders found.
                 </TableCell>
               </TableRow>
@@ -420,7 +414,6 @@ export function PurchaseOrdersTable() {
                   <TableCell>
                     ₹{parseFloat(po.totalAmount).toLocaleString()}
                   </TableCell>
-                  <TableCell>{getStatusBadge(po.status)}</TableCell>
                   <TableCell>
                     {new Date(po.orderDate).toLocaleDateString()}
                   </TableCell>

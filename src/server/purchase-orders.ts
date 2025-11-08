@@ -28,9 +28,6 @@ export const createPurchaseOrderFn = createServerFn({ method: "POST" })
       amount: z.string().min(1, "Amount is required"),
       taxPercentage: z.string().default("0"),
       orderDate: z.string().min(1, "Order date is required"),
-      status: z
-        .enum(["draft", "confirmed", "done", "cancelled"])
-        .default("draft"),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -50,7 +47,6 @@ export const createPurchaseOrderFn = createServerFn({ method: "POST" })
         amount: data.amount,
         taxPercentage: data.taxPercentage,
         totalAmount,
-        status: data.status,
         orderDate: data.orderDate,
         createdBy: userId,
       })
@@ -100,7 +96,6 @@ export const getPurchaseOrdersFn = createServerFn({ method: "GET" })
         amount: purchaseOrders.amount,
         taxPercentage: purchaseOrders.taxPercentage,
         totalAmount: purchaseOrders.totalAmount,
-        status: purchaseOrders.status,
         orderDate: purchaseOrders.orderDate,
         createdBy: purchaseOrders.createdBy,
         createdByName: users.name,
@@ -139,7 +134,6 @@ export const getPurchaseOrderByIdFn = createServerFn({ method: "GET" })
         amount: purchaseOrders.amount,
         taxPercentage: purchaseOrders.taxPercentage,
         totalAmount: purchaseOrders.totalAmount,
-        status: purchaseOrders.status,
         orderDate: purchaseOrders.orderDate,
         createdBy: purchaseOrders.createdBy,
         createdByName: users.name,
@@ -177,7 +171,6 @@ export const updatePurchaseOrderFn = createServerFn({ method: "POST" })
       amount: z.string().optional(),
       taxPercentage: z.string().optional(),
       orderDate: z.string().optional(),
-      status: z.enum(["draft", "confirmed", "done", "cancelled"]).optional(),
     }),
   )
   .handler(async ({ data }) => {

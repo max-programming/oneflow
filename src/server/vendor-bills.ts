@@ -14,6 +14,7 @@ import {
   authMiddleware,
   salesFinanceOrAdmin,
 } from "./auth-middleware";
+import { validateStatusTransition, canEditDocument } from "@/lib/financial-utils";
 
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
@@ -229,6 +230,44 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
       cleanedData.purchaseOrderId = undefined;
     }
 
+    // Validate status transitions if status is being updated
+    if (cleanedData.status) {
+      const [current] = await db
+        .select({
+          status: vendorBills.status,
+          paymentStatus: vendorBills.paymentStatus,
+          paidAmount: vendorBills.paidAmount,
+        })
+        .from(vendorBills)
+        .where(eq(vendorBills.id, billId))
+        .limit(1);
+
+      if (!current) {
+        throw new Error("Vendor bill not found");
+      }
+
+      // Validate the status transition
+      validateStatusTransition(
+        current.status,
+        cleanedData.status,
+        current.paymentStatus,
+        parseFloat(current.paidAmount),
+      );
+    }
+
+    // Prevent editing paid or cancelled bills (except status field)
+    if (Object.keys(cleanedData).length > 0 && !cleanedData.status) {
+      const [current] = await db
+        .select({ status: vendorBills.status })
+        .from(vendorBills)
+        .where(eq(vendorBills.id, billId))
+        .limit(1);
+
+      if (current && !canEditDocument(current.status)) {
+        throw new Error(`Cannot edit ${current.status} bill`);
+      }
+    }
+
     // If amount or tax is being updated, recalculate total
     if (cleanedData.amount || cleanedData.taxPercentage) {
       // Fetch current values if not all provided
@@ -296,6 +335,7 @@ export const recordVendorBillPaymentFn = createServerFn({ method: "POST" })
       .select({
         totalAmount: vendorBills.totalAmount,
         paidAmount: vendorBills.paidAmount,
+        status: vendorBills.status,
       })
       .from(vendorBills)
       .where(eq(vendorBills.id, data.billId))
@@ -315,9 +355,15 @@ export const recordVendorBillPaymentFn = createServerFn({ method: "POST" })
       newPaidAmount,
     );
 
-    // Update status to paid if fully paid
-    const status =
-      paymentStatus === "fully_paid" ? ("paid" as const) : undefined;
+    // Auto-update status based on payment
+    // If fully paid -> set to 'paid'
+    // If currently 'draft' and receiving payment -> set to 'sent'
+    let status: "paid" | "sent" | undefined;
+    if (paymentStatus === "fully_paid") {
+      status = "paid";
+    } else if (current.status === "draft") {
+      status = "sent";
+    }
 
     const [updatedBill] = await db
       .update(vendorBills)

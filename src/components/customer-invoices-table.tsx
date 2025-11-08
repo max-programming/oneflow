@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconTrash, IconCash } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCash, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -44,6 +44,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   getCustomerInvoicesFn,
@@ -54,11 +60,18 @@ import {
 import { getCustomersFn } from "@/server/customer";
 import { getProjectsFn } from "@/server/projects";
 import { getSalesOrdersFn } from "@/server/sales-orders";
+import { getPaymentBadgeVariant, getPaymentStatusMessage } from "@/lib/financial-utils";
 
 type CustomerInvoices = Awaited<ReturnType<typeof getCustomerInvoicesFn>>;
 
 function CustomerInvoiceCreateDialog() {
   const [open, setOpen] = React.useState(false);
+  const [invoiceDateOpen, setInvoiceDateOpen] = React.useState(false);
+  const [dueDateOpen, setDueDateOpen] = React.useState(false);
+  const [invoiceDate, setInvoiceDate] = React.useState<Date | undefined>(new Date());
+  const [dueDate, setDueDate] = React.useState<Date | undefined>(
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  );
   const [formData, setFormData] = React.useState({
     customerId: "",
     projectId: "",
@@ -66,10 +79,6 @@ function CustomerInvoiceCreateDialog() {
     description: "",
     amount: "",
     taxPercentage: "18",
-    invoiceDate: new Date().toISOString().split("T")[0],
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
     status: "draft" as "draft" | "sent" | "paid" | "cancelled",
   });
   const queryClient = useQueryClient();
@@ -98,12 +107,10 @@ function CustomerInvoiceCreateDialog() {
         description: "",
         amount: "",
         taxPercentage: "18",
-        invoiceDate: new Date().toISOString().split("T")[0],
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
         status: "draft",
       });
+      setInvoiceDate(new Date());
+      setDueDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
     }
   }, [open]);
 
@@ -127,8 +134,8 @@ function CustomerInvoiceCreateDialog() {
     if (
       !formData.customerId ||
       !formData.amount ||
-      !formData.invoiceDate ||
-      !formData.dueDate
+      !invoiceDate ||
+      !dueDate
     ) {
       toast.error("Customer, amount, invoice date, and due date are required");
       return;
@@ -138,7 +145,9 @@ function CustomerInvoiceCreateDialog() {
       data: {
         ...formData,
         projectId: formData.projectId || null,
-        salesOrderId: formData.salesOrderId || null,
+        salesOrderId: formData.salesOrderId ? parseInt(formData.salesOrderId) : null,
+        invoiceDate: invoiceDate.toISOString().split("T")[0],
+        dueDate: dueDate.toISOString().split("T")[0],
       },
     });
   }
@@ -218,7 +227,7 @@ function CustomerInvoiceCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {salesOrders?.map((so) => (
-                  <SelectItem key={so.id} value={so.id}>
+                  <SelectItem key={so.id} value={so.id.toString()}>
                     {so.orderNumber} - ₹
                     {parseFloat(so.totalAmount).toLocaleString()}
                   </SelectItem>
@@ -263,32 +272,65 @@ function CustomerInvoiceCreateDialog() {
             <Label htmlFor="invoiceDate" className="text-right">
               Invoice Date *
             </Label>
-            <Input
-              id="invoiceDate"
-              type="date"
-              value={formData.invoiceDate}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  invoiceDate: e.target.value,
-                }))
-              }
-              className="col-span-3"
-            />
+            <Popover open={invoiceDateOpen} onOpenChange={setInvoiceDateOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                  {invoiceDate ? (
+                    invoiceDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">Select date</span>
+                  )}
+                  <IconCalendar className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={invoiceDate}
+                  onSelect={(date) => {
+                    setInvoiceDate(date);
+                    setInvoiceDateOpen(false);
+                  }}
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="dueDate" className="text-right">
               Due Date *
             </Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, dueDate: e.target.value }))
-              }
-              className="col-span-3"
-            />
+            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                  {dueDate ? (
+                    dueDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">Select date</span>
+                  )}
+                  <IconCalendar className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={(date) => {
+                    setDueDate(date);
+                    setDueDateOpen(false);
+                  }}
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="status" className="text-right">
@@ -458,7 +500,7 @@ function CustomerInvoiceDeleteDialog({
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (invoiceId: string) =>
+    mutationFn: (invoiceId: number) =>
       deleteCustomerInvoiceFn({ data: { invoiceId } }),
     onSuccess: () => {
       toast.success("Customer invoice deleted successfully");
@@ -530,18 +572,6 @@ export function CustomerInvoicesTable() {
     }
   }, [isError, error]);
 
-  const getPaymentStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      unpaid: "destructive",
-      partially_paid: "secondary",
-      fully_paid: "default",
-    };
-    return (
-      <Badge variant={variants[status] || "default"}>
-        {status.replace("_", " ")}
-      </Badge>
-    );
-  };
 
   return (
     <div className="space-y-4">
@@ -602,7 +632,9 @@ export function CustomerInvoicesTable() {
                     ₹{parseFloat(invoice.paidAmount).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    {getPaymentStatusBadge(invoice.paymentStatus)}
+                    <Badge variant={getPaymentBadgeVariant(invoice.paymentStatus, invoice.dueDate)}>
+                      {getPaymentStatusMessage(invoice.paymentStatus, invoice.dueDate)}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {new Date(invoice.dueDate).toLocaleDateString()}

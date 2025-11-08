@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconCheck, IconX, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconCheck, IconX, IconTrash, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -45,6 +45,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   getExpensesFn,
@@ -59,13 +65,14 @@ type Expenses = Awaited<ReturnType<typeof getExpensesFn>>;
 
 function ExpenseCreateDialog() {
   const [open, setOpen] = React.useState(false);
+  const [expenseDateOpen, setExpenseDateOpen] = React.useState(false);
+  const [expenseDate, setExpenseDate] = React.useState<Date | undefined>(new Date());
   const [formData, setFormData] = React.useState({
     projectId: "",
     description: "",
     category: "",
     amount: "",
     taxPercentage: "0",
-    expenseDate: new Date().toISOString().split("T")[0],
     billable: false,
   });
   const queryClient = useQueryClient();
@@ -83,9 +90,9 @@ function ExpenseCreateDialog() {
         category: "",
         amount: "",
         taxPercentage: "0",
-        expenseDate: new Date().toISOString().split("T")[0],
         billable: false,
       });
+      setExpenseDate(new Date());
     }
   }, [open]);
 
@@ -104,7 +111,7 @@ function ExpenseCreateDialog() {
   });
 
   function handleCreate() {
-    if (!formData.description || !formData.amount || !formData.expenseDate) {
+    if (!formData.description || !formData.amount || !expenseDate) {
       toast.error("Description, amount, and expense date are required");
       return;
     }
@@ -113,6 +120,7 @@ function ExpenseCreateDialog() {
       data: {
         ...formData,
         projectId: formData.projectId || null,
+        expenseDate: expenseDate.toISOString().split("T")[0],
       },
     });
   }
@@ -223,18 +231,33 @@ function ExpenseCreateDialog() {
             <Label htmlFor="expenseDate" className="text-right">
               Expense Date *
             </Label>
-            <Input
-              id="expenseDate"
-              type="date"
-              value={formData.expenseDate}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  expenseDate: e.target.value,
-                }))
-              }
-              className="col-span-3"
-            />
+            <Popover open={expenseDateOpen} onOpenChange={setExpenseDateOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                  {expenseDate ? (
+                    expenseDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">Select date</span>
+                  )}
+                  <IconCalendar className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={expenseDate}
+                  onSelect={(date) => {
+                    setExpenseDate(date);
+                    setExpenseDateOpen(false);
+                  }}
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="billable" className="text-right">

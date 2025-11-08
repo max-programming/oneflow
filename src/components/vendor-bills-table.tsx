@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconCash, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconCash, IconTrash, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -44,6 +44,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   getVendorBillsFn,
@@ -54,11 +60,18 @@ import {
 import { getVendorsFn } from "@/server/vendors";
 import { getProjectsFn } from "@/server/projects";
 import { getPurchaseOrdersFn } from "@/server/purchase-orders";
+import { getPaymentBadgeVariant, getPaymentStatusMessage } from "@/lib/financial-utils";
 
 type VendorBills = Awaited<ReturnType<typeof getVendorBillsFn>>;
 
 function VendorBillCreateDialog() {
   const [open, setOpen] = React.useState(false);
+  const [billDateOpen, setBillDateOpen] = React.useState(false);
+  const [dueDateOpen, setDueDateOpen] = React.useState(false);
+  const [billDate, setBillDate] = React.useState<Date | undefined>(new Date());
+  const [dueDate, setDueDate] = React.useState<Date | undefined>(
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  );
   const [formData, setFormData] = React.useState({
     vendorId: "",
     projectId: "",
@@ -66,10 +79,6 @@ function VendorBillCreateDialog() {
     description: "",
     amount: "",
     taxPercentage: "18",
-    billDate: new Date().toISOString().split("T")[0],
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
     status: "draft" as "draft" | "sent" | "paid" | "cancelled",
   });
   const queryClient = useQueryClient();
@@ -89,11 +98,24 @@ function VendorBillCreateDialog() {
     queryFn: () => getPurchaseOrdersFn(),
   });
 
-  // Filter purchase orders by selected vendor
-  const filteredPurchaseOrders = React.useMemo(() => {
-    if (!purchaseOrders || !formData.vendorId) return [];
-    return purchaseOrders.filter((po) => po.vendorId === parseInt(formData.vendorId));
-  }, [purchaseOrders, formData.vendorId]);
+
+  // Auto-fill vendor, project, and amount when PO is selected
+  React.useEffect(() => {
+    if (formData.purchaseOrderId && purchaseOrders) {
+      const selectedPO = purchaseOrders.find(
+        (po) => po.id === parseInt(formData.purchaseOrderId)
+      );
+      if (selectedPO) {
+        setFormData((prev) => ({
+          ...prev,
+          vendorId: selectedPO.vendorId.toString(),
+          projectId: selectedPO.projectId || "",
+          amount: selectedPO.totalAmount,
+          description: selectedPO.description || "",
+        }));
+      }
+    }
+  }, [formData.purchaseOrderId, purchaseOrders]);
 
   React.useEffect(() => {
     if (!open) {
@@ -104,19 +126,13 @@ function VendorBillCreateDialog() {
         description: "",
         amount: "",
         taxPercentage: "18",
-        billDate: new Date().toISOString().split("T")[0],
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
         status: "draft",
       });
+      setBillDate(new Date());
+      setDueDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
     }
   }, [open]);
 
-  // Reset PO selection when vendor changes
-  React.useEffect(() => {
-    setFormData((prev) => ({ ...prev, purchaseOrderId: "" }));
-  }, [formData.vendorId]);
 
   const createMutation = useMutation({
     mutationFn: createVendorBillFn,
@@ -133,7 +149,7 @@ function VendorBillCreateDialog() {
   });
 
   function handleCreate() {
-    if (!formData.vendorId || !formData.amount || !formData.billDate || !formData.dueDate) {
+    if (!formData.vendorId || !formData.amount || !billDate || !dueDate) {
       toast.error("Vendor, amount, bill date, and due date are required");
       return;
     }
@@ -143,7 +159,11 @@ function VendorBillCreateDialog() {
         ...formData,
         vendorId: parseInt(formData.vendorId),
         projectId: formData.projectId || null,
-        purchaseOrderId: formData.purchaseOrderId ? parseInt(formData.purchaseOrderId) : null,
+        purchaseOrderId: formData.purchaseOrderId
+          ? parseInt(formData.purchaseOrderId)
+          : null,
+        billDate: billDate.toISOString().split("T")[0],
+        dueDate: dueDate.toISOString().split("T")[0],
       },
     });
   }
@@ -165,6 +185,28 @@ function VendorBillCreateDialog() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="purchaseOrder" className="text-right">
+              Purchase Order
+            </Label>
+            <Select
+              value={formData.purchaseOrderId}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, purchaseOrderId: value }))
+              }
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select PO (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {purchaseOrders?.map((po) => (
+                  <SelectItem key={po.id} value={po.id.toString()}>
+                    {po.poNumber} - ₹{parseFloat(po.totalAmount).toLocaleString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="vendor" className="text-right">
               Vendor *
             </Label>
@@ -173,9 +215,10 @@ function VendorBillCreateDialog() {
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, vendorId: value }))
               }
+              disabled={!!formData.purchaseOrderId}
             >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select vendor" />
+                <SelectValue placeholder={formData.purchaseOrderId ? "From PO" : "Select vendor"} />
               </SelectTrigger>
               <SelectContent>
                 {vendors?.map((vendor) => (
@@ -195,37 +238,15 @@ function VendorBillCreateDialog() {
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, projectId: value }))
               }
+              disabled={!!formData.purchaseOrderId}
             >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select project (optional)" />
+                <SelectValue placeholder={formData.purchaseOrderId ? "From PO" : "Select project (optional)"} />
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="purchaseOrder" className="text-right">
-              Purchase Order
-            </Label>
-            <Select
-              value={formData.purchaseOrderId}
-              onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, purchaseOrderId: value }))
-              }
-              disabled={!formData.vendorId}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select PO (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredPurchaseOrders?.map((po) => (
-                  <SelectItem key={po.id} value={po.id.toString()}>
-                    {po.poNumber} - ₹{parseFloat(po.totalAmount).toLocaleString()}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -268,50 +289,65 @@ function VendorBillCreateDialog() {
             <Label htmlFor="billDate" className="text-right">
               Bill Date *
             </Label>
-            <Input
-              id="billDate"
-              type="date"
-              value={formData.billDate}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, billDate: e.target.value }))
-              }
-              className="col-span-3"
-            />
+            <Popover open={billDateOpen} onOpenChange={setBillDateOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                  {billDate ? (
+                    billDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">Select date</span>
+                  )}
+                  <IconCalendar className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={billDate}
+                  onSelect={(date) => {
+                    setBillDate(date);
+                    setBillDateOpen(false);
+                  }}
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="dueDate" className="text-right">
               Due Date *
             </Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, dueDate: e.target.value }))
-              }
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="status" className="text-right">
-              Status
-            </Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value: any) =>
-                setFormData((prev) => ({ ...prev, status: value }))
-              }
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                  {dueDate ? (
+                    dueDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">Select date</span>
+                  )}
+                  <IconCalendar className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={(date) => {
+                    setDueDate(date);
+                    setDueDateOpen(false);
+                  }}
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="description" className="text-right">
@@ -536,18 +572,6 @@ export function VendorBillsTable() {
     }
   }, [isError, error]);
 
-  const getPaymentStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      unpaid: "destructive",
-      partially_paid: "secondary",
-      fully_paid: "default",
-    };
-    return (
-      <Badge variant={variants[status] || "default"}>
-        {status.replace("_", " ")}
-      </Badge>
-    );
-  };
 
   return (
     <div className="space-y-4">
@@ -594,7 +618,9 @@ export function VendorBillsTable() {
                     ₹{parseFloat(bill.totalAmount).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    {getPaymentStatusBadge(bill.paymentStatus)}
+                    <Badge variant={getPaymentBadgeVariant(bill.paymentStatus, bill.dueDate)}>
+                      {getPaymentStatusMessage(bill.paymentStatus, bill.dueDate)}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {new Date(bill.dueDate).toLocaleDateString()}

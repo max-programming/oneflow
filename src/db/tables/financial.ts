@@ -13,29 +13,9 @@ import { users } from "./auth";
 import { customers, projects } from "./projects";
 
 // Enums for financial statuses
-export type SalesOrderStatusEnum = "draft" | "confirmed" | "done" | "cancelled";
-export type PurchaseOrderStatusEnum =
-  | "draft"
-  | "confirmed"
-  | "done"
-  | "cancelled";
 export type InvoiceStatusEnum = "draft" | "sent" | "paid" | "cancelled";
 export type PaymentStatusEnum = "unpaid" | "partially_paid" | "fully_paid";
 export type ExpenseApprovalStatusEnum = "pending" | "approved" | "rejected";
-
-export const salesOrderStatusEnum = pgEnum("sales_order_status", [
-  "draft",
-  "confirmed",
-  "done",
-  "cancelled",
-]);
-
-export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
-  "draft",
-  "confirmed",
-  "done",
-  "cancelled",
-]);
 
 export const invoiceStatusEnum = pgEnum("invoice_status", [
   "draft",
@@ -86,7 +66,6 @@ export const salesOrders = pgTable("sales_orders", {
     .notNull()
     .default("0"), // Tax percentage (e.g., 18.00 for 18%)
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(), // amount + tax
-  status: salesOrderStatusEnum().notNull().default("draft"),
   orderDate: date().notNull(),
   createdBy: uuid()
     .notNull()
@@ -120,7 +99,6 @@ export const purchaseOrders = pgTable("purchase_orders", {
     .notNull()
     .default("0"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  status: purchaseOrderStatusEnum().notNull().default("draft"),
   orderDate: date().notNull(),
   createdBy: uuid()
     .notNull()

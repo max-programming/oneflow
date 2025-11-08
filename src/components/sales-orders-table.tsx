@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconPencil, IconTrash, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -44,6 +44,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   getSalesOrdersFn,
@@ -58,14 +64,14 @@ type SalesOrders = Awaited<ReturnType<typeof getSalesOrdersFn>>;
 
 function SalesOrderCreateDialog() {
   const [open, setOpen] = React.useState(false);
+  const [orderDateOpen, setOrderDateOpen] = React.useState(false);
+  const [orderDate, setOrderDate] = React.useState<Date | undefined>(new Date());
   const [formData, setFormData] = React.useState({
     customerId: "",
     projectId: "",
     description: "",
     amount: "",
     taxPercentage: "18",
-    orderDate: new Date().toISOString().split("T")[0],
-    status: "draft" as "draft" | "confirmed" | "done" | "cancelled",
   });
   const queryClient = useQueryClient();
 
@@ -79,6 +85,16 @@ function SalesOrderCreateDialog() {
     queryFn: () => getProjectsFn(),
   });
 
+  // Auto-derive customer from selected project
+  React.useEffect(() => {
+    if (formData.projectId && projects) {
+      const selectedProject = projects.find((p) => p.id === formData.projectId);
+      if (selectedProject) {
+        setFormData((prev) => ({ ...prev, customerId: selectedProject.customerId }));
+      }
+    }
+  }, [formData.projectId, projects]);
+
   React.useEffect(() => {
     if (!open) {
       setFormData({
@@ -87,9 +103,8 @@ function SalesOrderCreateDialog() {
         description: "",
         amount: "",
         taxPercentage: "18",
-        orderDate: new Date().toISOString().split("T")[0],
-        status: "draft",
       });
+      setOrderDate(new Date());
     }
   }, [open]);
 
@@ -108,7 +123,7 @@ function SalesOrderCreateDialog() {
   });
 
   function handleCreate() {
-    if (!formData.customerId || !formData.amount || !formData.orderDate) {
+    if (!formData.customerId || !formData.amount || !orderDate) {
       toast.error("Customer, amount, and order date are required");
       return;
     }
@@ -117,6 +132,7 @@ function SalesOrderCreateDialog() {
       data: {
         ...formData,
         projectId: formData.projectId || null,
+        orderDate: orderDate.toISOString().split("T")[0],
       },
     });
   }
@@ -138,28 +154,6 @@ function SalesOrderCreateDialog() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="customer" className="text-right">
-              Customer *
-            </Label>
-            <Select
-              value={formData.customerId}
-              onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, customerId: value }))
-              }
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers?.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="project" className="text-right">
               Project
             </Label>
@@ -176,6 +170,29 @@ function SalesOrderCreateDialog() {
                 {projects?.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="customer" className="text-right">
+              Customer *
+            </Label>
+            <Select
+              value={formData.customerId}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, customerId: value }))
+              }
+              disabled={!!formData.projectId}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder={formData.projectId ? "From project" : "Select customer"} />
+              </SelectTrigger>
+              <SelectContent>
+                {customers?.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id}>
+                    {customer.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -218,36 +235,36 @@ function SalesOrderCreateDialog() {
             <Label htmlFor="orderDate" className="text-right">
               Order Date *
             </Label>
-            <Input
-              id="orderDate"
-              type="date"
-              value={formData.orderDate}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, orderDate: e.target.value }))
-              }
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="status" className="text-right">
-              Status
-            </Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value: any) =>
-                setFormData((prev) => ({ ...prev, status: value }))
-              }
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover open={orderDateOpen} onOpenChange={setOrderDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
+                  {orderDate ? (
+                    orderDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  ) : (
+                    <span className="text-muted-foreground">Select date</span>
+                  )}
+                  <IconCalendar className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={orderDate}
+                  onSelect={(date) => {
+                    setOrderDate(date);
+                    setOrderDateOpen(false);
+                  }}
+                  captionLayout="dropdown"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="description" className="text-right">
@@ -289,7 +306,7 @@ function SalesOrderDeleteDialog({ salesOrder }: SalesOrderDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (salesOrderId: string) =>
+    mutationFn: (salesOrderId: number) =>
       deleteSalesOrderFn({ data: { salesOrderId } }),
     onSuccess: () => {
       toast.success("Sales order deleted successfully");
@@ -359,16 +376,6 @@ export function SalesOrdersTable() {
     }
   }, [isError, error]);
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "outline"> = {
-      draft: "secondary",
-      confirmed: "default",
-      done: "outline",
-      cancelled: "outline",
-    };
-    return <Badge variant={variants[status] || "default"}>{status}</Badge>;
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
@@ -382,7 +389,6 @@ export function SalesOrdersTable() {
               <TableHead>Customer</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -391,7 +397,7 @@ export function SalesOrdersTable() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
-                  {Array.from({ length: 7 }).map((_, cellIndex) => (
+                  {Array.from({ length: 6 }).map((_, cellIndex) => (
                     <TableCell key={cellIndex}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -400,7 +406,7 @@ export function SalesOrdersTable() {
               ))
             ) : !salesOrders || salesOrders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No sales orders found.
                 </TableCell>
               </TableRow>
@@ -413,7 +419,6 @@ export function SalesOrdersTable() {
                   <TableCell>
                     ₹{parseFloat(so.totalAmount).toLocaleString()}
                   </TableCell>
-                  <TableCell>{getStatusBadge(so.status)}</TableCell>
                   <TableCell>
                     {new Date(so.orderDate).toLocaleDateString()}
                   </TableCell>
