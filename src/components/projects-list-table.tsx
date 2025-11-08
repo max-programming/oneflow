@@ -20,13 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Pagination } from "@/components/ui/pagination";
 import { Link } from "@tanstack/react-router";
 import { User, Building2, Mail, Phone, Shield } from "lucide-react";
 import { IconDotsVertical, IconPencil, IconTrash } from "@tabler/icons-react";
 import { type Project } from "@/components/project-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState } from "react";
 
 // Helper function to get status badge variant
 function getStatusVariant(status: string) {
@@ -79,14 +77,6 @@ export function ProjectsListTable({
   projects,
   isAdminOrProjectManager,
 }: ProjectsListTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  // Calculate pagination
-  const totalPages = Math.ceil(projects.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentProjects = projects.slice(startIndex, endIndex);
 
   return (
     <div className="space-y-4">
@@ -108,7 +98,7 @@ export function ProjectsListTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentProjects.map((project) => (
+              {projects.map((project) => (
                 <TableRow
                   key={project.id}
                   className="cursor-pointer hover:bg-muted/50 h-20"
@@ -287,21 +277,6 @@ export function ProjectsListTable({
           </Table>
         </div>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {startIndex + 1} to {Math.min(endIndex, projects.length)} of{" "}
-            {projects.length} projects
-          </div>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -363,10 +338,6 @@ export function ProjectsListTableSkeleton() {
             </TableBody>
           </Table>
         </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-4 w-[200px]" />
-        <Skeleton className="h-10 w-[300px]" />
       </div>
     </div>
   );
