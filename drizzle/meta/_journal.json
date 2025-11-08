@@ -57,6 +57,13 @@
       "when": 1762605128307,
       "tag": "0007_breezy_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1762618127230,
+      "tag": "0008_bright_psylocke",
+      "breakpoints": true
     }
   ]
 }
