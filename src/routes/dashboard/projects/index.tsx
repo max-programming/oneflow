@@ -29,8 +29,8 @@ const searchParamsSchema = z.object({
       "on-hold",
     ])
     .optional(),
-  startDate: z.date().optional(),
-  deadlineDate: z.date().optional(),
+  startDate: z.iso.date().optional(),
+  deadlineDate: z.iso.date().optional(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -49,24 +49,13 @@ function RouteComponent() {
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  function handleFiltersChange(
-    newFilters: Omit<ProjectsPageSP, "startDate" | "deadlineDate"> & {
-      startDate?: string;
-      deadlineDate?: string;
-    },
-  ) {
+  function handleFiltersChange(newFilters: ProjectsPageSP) {
     navigate({
       to: "/dashboard/projects",
       search: (prev) => {
         return {
           ...prev,
           ...newFilters,
-          startDate: newFilters.startDate
-            ? new Date(newFilters.startDate)
-            : undefined,
-          deadlineDate: newFilters.deadlineDate
-            ? new Date(newFilters.deadlineDate)
-            : undefined,
         };
       },
       replace: true,
@@ -96,8 +85,8 @@ function RouteComponent() {
           manager: searchParams.manager,
           customer: searchParams.customer,
           status: searchParams.status,
-          startDate: searchParams.startDate?.toISOString().split("T")[0],
-          deadlineDate: searchParams.deadlineDate?.toISOString().split("T")[0],
+          startDate: searchParams.startDate,
+          deadlineDate: searchParams.deadlineDate,
           tags: searchParams.tags,
         },
       }),

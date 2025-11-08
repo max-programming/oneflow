@@ -66,15 +66,10 @@ interface ProjectFiltersBarProps {
   manager?: string;
   customer?: string;
   status?: string;
-  startDate?: Date;
-  deadlineDate?: Date;
+  startDate?: string;
+  deadlineDate?: string;
   tags?: string[];
-  onFiltersChange: (
-    filters: Omit<ProjectsPageSP, "startDate" | "deadlineDate"> & {
-      startDate?: string;
-      deadlineDate?: string;
-    },
-  ) => void;
+  onFiltersChange: (filters: ProjectsPageSP) => void;
 }
 
 export function ProjectFiltersBar({
@@ -142,14 +137,14 @@ export function ProjectFiltersBar({
 
   const handleStartDateChange = (date: Date | undefined) => {
     onFiltersChange({
-      startDate: date ? format(date, "yyyy-MM-dd") : undefined,
+      startDate: date ? date.toISOString().split("T")[0] : undefined,
     });
     setStartDateOpen(false);
   };
 
   const handleDeadlineDateChange = (date: Date | undefined) => {
     onFiltersChange({
-      deadlineDate: date ? format(date, "yyyy-MM-dd") : undefined,
+      deadlineDate: date ? date.toISOString().split("T")[0] : undefined,
     });
     setDeadlineDateOpen(false);
   };
@@ -364,7 +359,7 @@ export function ProjectFiltersBar({
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={startDate}
+                  selected={startDate ? new Date(startDate) : undefined}
                   onSelect={handleStartDateChange}
                   initialFocus
                 />
@@ -391,7 +386,7 @@ export function ProjectFiltersBar({
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={deadlineDate}
+                  selected={deadlineDate ? new Date(deadlineDate) : undefined}
                   onSelect={handleDeadlineDateChange}
                   initialFocus
                 />
