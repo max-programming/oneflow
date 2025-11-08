@@ -81,7 +81,6 @@ export function TasksKanban({
   onHighlightComplete,
 }: TasksKanbanProps) {
   const queryClient = useQueryClient();
-  const [localTasks, setLocalTasks] = useState<TaskData[]>([]);
 
   // Fetch tasks for the project
   const {
@@ -93,6 +92,8 @@ export function TasksKanban({
     queryFn: () => getProjectTasksFn({ data: { projectId } }),
     refetchOnWindowFocus: false,
   });
+
+  const [localTasks, setLocalTasks] = useState(tasks || []);
 
   // Update task status mutation
   const updateTaskMutation = useMutation({
@@ -111,32 +112,10 @@ export function TasksKanban({
       );
       // Reset local tasks to server state on error
       if (tasks) {
-        const transformedTasks: TaskData[] = tasks.map((task) => ({
-          ...task,
-          column: task.status as string,
-          status: task.status, // Preserve TaskStatusEnum type
-          createdAt: task.createdAt.toISOString(),
-          updatedAt: task.updatedAt.toISOString(),
-        }));
-        setLocalTasks(transformedTasks);
+        setLocalTasks(tasks);
       }
     },
   });
-
-  // Update local tasks when server data changes
-  useEffect(() => {
-    if (tasks) {
-      // Transform server data to include column field for kanban
-      const transformedTasks: TaskData[] = tasks.map((task) => ({
-        ...task,
-        column: task.status as string, // Cast TaskStatusEnum to string for kanban compatibility
-        status: task.status, // Preserve TaskStatusEnum type
-        createdAt: task.createdAt.toISOString(), // Convert Date to string
-        updatedAt: task.updatedAt.toISOString(), // Convert Date to string
-      }));
-      setLocalTasks(transformedTasks);
-    }
-  }, [tasks]);
 
   // Handle task highlighting timeout
   useEffect(() => {
@@ -149,10 +128,9 @@ export function TasksKanban({
     }
   }, [highlightedTaskId, onHighlightComplete]);
 
-  const handleDataChange = (newTasks: any[]) => {
-    // The kanban provider sends us updated task data, just update local state
-    setLocalTasks(newTasks as TaskData[]);
-  };
+  useEffect(() => {
+    setLocalTasks(tasks || []);
+  }, [tasks]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -177,16 +155,13 @@ export function TasksKanban({
     }
 
     // Optimistically update the task status
-    const updatedTasks = localTasks.map((task) =>
-      task.id === activeTask.id
-        ? {
-            ...task,
-            status: newStatus as TaskStatusEnum,
-            column: newStatus as string,
-          }
-        : task,
+    setLocalTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === activeTask.id
+          ? { ...task, status: newStatus as TaskStatusEnum }
+          : task,
+      ),
     );
-    setLocalTasks(updatedTasks);
 
     // Update task status on server
     updateTaskMutation.mutate({
@@ -198,7 +173,7 @@ export function TasksKanban({
   };
 
   const getTaskCountForStatus = (status: string) => {
-    return localTasks.filter((task) => task.column === status).length;
+    return localTasks.filter((task) => task.status === status).length;
   };
 
   if (isLoading) {
@@ -234,8 +209,8 @@ export function TasksKanban({
     <div className="h-full">
       <KanbanProvider
         columns={KANBAN_COLUMNS}
-        data={localTasks}
-        onDataChange={handleDataChange}
+        data={localTasks.map((t) => ({ ...t, column: t.status }))}
+        onDataChange={(newTasks) => setLocalTasks(newTasks)}
         onDragEnd={handleDragEnd}
         className="h-full"
       >
