@@ -8,19 +8,26 @@ export const Route = createFileRoute("/dashboard/projects/")({
 });
 
 function RouteComponent() {
+  const { session } = Route.useRouteContext();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const isAdminOrProjectManager =
+    session?.user?.role === "admin" ||
+    session?.user?.role === "project-manager";
 
   return (
     <div className="relative p-6">
-      <CreateProjectDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        triggerButton={
-          <Button className="absolute top-6 right-6" variant="default">
-            Create Project
-          </Button>
-        }
-      />
+      {isAdminOrProjectManager && (
+        <CreateProjectDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          triggerButton={
+            <Button className="absolute top-6 right-6" variant="default">
+              Create Project
+            </Button>
+          }
+        />
+      )}
     </div>
   );
 }
