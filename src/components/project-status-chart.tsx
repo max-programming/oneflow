@@ -144,7 +144,7 @@ export function ProjectStatusChart({
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
+          className="mx-auto aspect-square max-h-[400px]"
         >
           <PieChart>
             <ChartTooltip
@@ -155,7 +155,7 @@ export function ProjectStatusChart({
               data={chartData}
               dataKey="count"
               nameKey="status"
-              innerRadius={60}
+              innerRadius={80}
               strokeWidth={5}
             >
               <Label

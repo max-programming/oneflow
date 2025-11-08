@@ -1,6 +1,9 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getFilteredProjectsFn } from "@/server/projects";
+import {
+  getFilteredProjectsFn,
+  getTeamMemberFilteredProjectsFn,
+} from "@/server/projects";
 import { ProjectCard } from "./project-card";
 import { Pagination } from "./ui/pagination";
 import {
@@ -31,21 +34,39 @@ const filterLabels: Record<FilterType, string> = {
   "on-hold": "On Hold",
 };
 
-export function ProjectsWithFilter() {
+interface ProjectsWithFilterProps {
+  userRole?: "project-manager" | "team-member";
+}
+
+export function ProjectsWithFilter({
+  userRole = "project-manager",
+}: ProjectsWithFilterProps) {
   const { session } = useRouteContext({ from: "__root__" });
   const [currentPage, setCurrentPage] = React.useState(1);
   const [filter, setFilter] = React.useState<FilterType>("all");
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["filtered-projects", currentPage, filter],
+    queryKey: [
+      userRole === "team-member" ? "tm-filtered-projects" : "filtered-projects",
+      currentPage,
+      filter,
+    ],
     queryFn: () =>
-      getFilteredProjectsFn({
-        data: {
-          page: currentPage,
-          limit: 6,
-          filter,
-        },
-      }),
+      userRole === "team-member"
+        ? getTeamMemberFilteredProjectsFn({
+            data: {
+              page: currentPage,
+              limit: 6,
+              filter,
+            },
+          })
+        : getFilteredProjectsFn({
+            data: {
+              page: currentPage,
+              limit: 6,
+              filter,
+            },
+          }),
   });
 
   // Reset to page 1 when filter changes

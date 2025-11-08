@@ -7,7 +7,7 @@ import {
   projects,
 } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -523,7 +523,7 @@ export const getProjectTotalLoggedHoursFn = createServerFn({ method: "GET" })
       .where(eq(projectTaskTimesheets.projectId, data.projectId));
 
     // Ensure startTime and endTime are Date objects
-    const processedTimesheets = timesheets.map(ts => ({
+    const processedTimesheets = timesheets.map((ts) => ({
       startTime: new Date(ts.startTime),
       endTime: new Date(ts.endTime),
     }));
@@ -602,8 +602,8 @@ export const getProjectWeeklyLoggedHoursFn = createServerFn({ method: "GET" })
     });
 
     // Ensure hours are numbers, not Date objects
-    Object.keys(hoursByDay).forEach(day => {
-      if (typeof hoursByDay[day] !== 'number') {
+    Object.keys(hoursByDay).forEach((day) => {
+      if (typeof hoursByDay[day] !== "number") {
         hoursByDay[day] = 0;
       }
     });
@@ -638,9 +638,14 @@ export const getProjectStatisticsFn = createServerFn({ method: "GET" })
       );
 
     const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((task) => task.status === "done").length;
+    const completedTasks = tasks.filter(
+      (task) => task.status === "done",
+    ).length;
     const openTasks = totalTasks - completedTasks;
-    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 10000) / 100 : 0;
+    const progress =
+      totalTasks > 0
+        ? Math.round((completedTasks / totalTasks) * 10000) / 100
+        : 0;
 
     // Get project dates to calculate total days
     const [project] = await db
@@ -657,7 +662,8 @@ export const getProjectStatisticsFn = createServerFn({ method: "GET" })
       const start = new Date(project.startDate);
       const deadline = new Date(project.deadlineDate);
       const diffTime = deadline.getTime() - start.getTime();
-      totalDays = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+      totalDays =
+        diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
     }
 
     return {
@@ -785,6 +791,114 @@ export const getProjectManagerTasksFn = createServerFn({ method: "GET" })
     };
   });
 
+// Get Team Member Tasks - For authenticated team members
+export const getTeamMemberTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      page: z.number().default(1),
+      limit: z.number().default(10),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const userId = context.user.id;
+    const { page, limit } = data;
+    const offset = (page - 1) * limit;
+
+    // Get all tasks assigned to the user
+    const allTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        taskCreatedAt: projectTasks.createdAt,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(
+        projectTaskAssignees,
+        eq(projectTasks.id, projectTaskAssignees.taskId),
+      )
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          eq(projectTaskAssignees.userId, userId),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .orderBy(desc(projectTasks.dueDate));
+
+    const totalCount = allTasks.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedTasks = allTasks.slice(offset, offset + limit);
+
+    // Get assignees for the paginated tasks
+    const taskIds = paginatedTasks.map((task) => task.taskId);
+
+    const assignees =
+      taskIds.length > 0
+        ? await db
+            .select({
+              taskId: projectTaskAssignees.taskId,
+              userId: users.id,
+              userName: users.name,
+              userEmail: users.email,
+              userRole: users.role,
+            })
+            .from(projectTaskAssignees)
+            .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+            .where(inArray(projectTaskAssignees.taskId, taskIds))
+        : [];
+
+    // Group assignees by taskId
+    const assigneesByTask = assignees.reduce(
+      (acc, assignee) => {
+        if (!acc[assignee.taskId]) {
+          acc[assignee.taskId] = [];
+        }
+        acc[assignee.taskId].push({
+          userId: assignee.userId,
+          userName: assignee.userName,
+          userEmail: assignee.userEmail,
+          userRole: assignee.userRole,
+        });
+        return acc;
+      },
+      {} as Record<
+        string,
+        Array<{
+          userId: string;
+          userName: string | null;
+          userEmail: string | null;
+          userRole: string | null;
+        }>
+      >,
+    );
+
+    // Attach assignees to tasks
+    const tasksWithAssignees = paginatedTasks.map((task) => ({
+      ...task,
+      assignees: assigneesByTask[task.taskId] || [],
+    }));
+
+    return {
+      tasks: tasksWithAssignees,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  });
+
 // Update Task Status - Project Managers and Admins
 export const updateTaskStatusFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, teamMemberAccess])
@@ -824,15 +938,24 @@ export const updateTaskStatusFn = createServerFn({ method: "POST" })
     }
 
     // Check if user is project manager or admin
-    if (session.user.id !== project.managerId && (session.user.role !== "admin" && session.user.role !== "team-member")) {
+    if (
+      session.user.id !== project.managerId &&
+      session.user.role !== "admin" &&
+      session.user.role !== "team-member"
+    ) {
       throw new Error("You are not authorized to update this task");
     }
 
-    if (session.user.role === 'team-member') {
+    if (session.user.role === "team-member") {
       const [assigneeId] = await db
         .select({ assigneeId: projectTaskAssignees.userId })
         .from(projectTaskAssignees)
-        .where(and(eq(projectTaskAssignees.taskId, data.taskId), eq(projectTaskAssignees.userId, session.user.id)));
+        .where(
+          and(
+            eq(projectTaskAssignees.taskId, data.taskId),
+            eq(projectTaskAssignees.userId, session.user.id),
+          ),
+        );
 
       if (!assigneeId) {
         throw new Error("You are not authorized to update this task");
@@ -857,12 +980,13 @@ export const getProjectManagerTodaysTasksFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .handler(async ({ context }) => {
     const userId = context.user.id;
-    
+
     // Get today's date in YYYY-MM-DD format
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
-    // Get all tasks due today for projects managed by the PM
+    today.setHours(0, 0, 0, 0);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    // Get all tasks due today OR overdue for projects managed by the PM (not done)
     const todaysTasks = await db
       .select({
         taskId: projectTasks.id,
@@ -880,13 +1004,17 @@ export const getProjectManagerTodaysTasksFn = createServerFn({ method: "GET" })
       .where(
         and(
           eq(projects.managerId, userId),
-          eq(projectTasks.dueDate, todayStr),
+          or(
+            eq(projectTasks.dueDate, todayStr),
+            lt(projectTasks.dueDate, todayStr),
+          ),
+          ne(projectTasks.status, "done"),
           isNull(projectTasks.deletedAt),
-          isNull(projects.deletedAt)
-        )
+          isNull(projects.deletedAt),
+        ),
       )
-      .orderBy(projects.name);
-    
+      .orderBy(projectTasks.dueDate);
+
     // Get assignees for each task
     const tasksWithAssignees = await Promise.all(
       todaysTasks.map(async (task) => {
@@ -900,13 +1028,84 @@ export const getProjectManagerTodaysTasksFn = createServerFn({ method: "GET" })
           .from(projectTaskAssignees)
           .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
           .where(eq(projectTaskAssignees.taskId, task.taskId));
-        
+
         return {
           ...task,
           assignees,
         };
-      })
+      }),
     );
-    
+
+    return tasksWithAssignees;
+  });
+
+// Get Team Member Today's Tasks - For authenticated team members
+export const getTeamMemberTodaysTasksFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .handler(async ({ context }) => {
+    const userId = context.user.id;
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Convert today to YYYY-MM-DD format
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    // Get all tasks assigned to the user that are due today OR overdue (not done)
+    const todaysTasks = await db
+      .select({
+        taskId: projectTasks.id,
+        taskName: projectTasks.name,
+        taskDescription: projectTasks.description,
+        taskStatus: projectTasks.status,
+        taskStartDate: projectTasks.startDate,
+        taskDueDate: projectTasks.dueDate,
+        projectId: projects.id,
+        projectName: projects.name,
+        projectStatus: projects.status,
+      })
+      .from(projectTasks)
+      .innerJoin(
+        projectTaskAssignees,
+        eq(projectTasks.id, projectTaskAssignees.taskId),
+      )
+      .innerJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          eq(projectTaskAssignees.userId, userId),
+          or(
+            eq(projectTasks.dueDate, todayStr),
+            lt(projectTasks.dueDate, todayStr),
+          ),
+          ne(projectTasks.status, "done"),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .orderBy(projectTasks.dueDate);
+
+    console.log({ todayStr });
+
+    // Get assignees for each task
+    const tasksWithAssignees = await Promise.all(
+      todaysTasks.map(async (task) => {
+        const assignees = await db
+          .select({
+            userId: users.id,
+            userName: users.name,
+            userEmail: users.email,
+            userRole: users.role,
+          })
+          .from(projectTaskAssignees)
+          .innerJoin(users, eq(projectTaskAssignees.userId, users.id))
+          .where(eq(projectTaskAssignees.taskId, task.taskId));
+
+        return {
+          ...task,
+          assignees,
+        };
+      }),
+    );
+
     return tasksWithAssignees;
   });

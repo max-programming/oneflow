@@ -1,7 +1,11 @@
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { getProjectManagerTasksFn, updateTaskStatusFn } from "@/server/tasks";
+import {
+  getProjectManagerTasksFn,
+  getTeamMemberTasksFn,
+  updateTaskStatusFn,
+} from "@/server/tasks";
 import { AssigneeAvatars } from "./assignee-avatars";
 import { TaskStatusDropdown } from "./task-status-dropdown";
 import { Pagination } from "./ui/pagination";
@@ -28,21 +32,36 @@ import type { TaskStatusEnum } from "@/db/schema";
 
 interface TasksListTableProps {
   limit?: number;
+  userRole?: "project-manager" | "team-member";
 }
 
-export function TasksListTable({ limit = 10 }: TasksListTableProps) {
+export function TasksListTable({
+  limit = 10,
+  userRole = "project-manager",
+}: TasksListTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["pm-tasks", currentPage, limit],
+    queryKey: [
+      userRole === "team-member" ? "tm-tasks" : "pm-tasks",
+      currentPage,
+      limit,
+    ],
     queryFn: () =>
-      getProjectManagerTasksFn({
-        data: {
-          page: currentPage,
-          limit,
-        },
-      }),
+      userRole === "team-member"
+        ? getTeamMemberTasksFn({
+            data: {
+              page: currentPage,
+              limit,
+            },
+          })
+        : getProjectManagerTasksFn({
+            data: {
+              page: currentPage,
+              limit,
+            },
+          }),
   });
 
   const updateStatusMutation = useMutation({
