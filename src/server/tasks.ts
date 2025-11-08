@@ -1,8 +1,12 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { projectTaskAssignees, projectTasks } from "@/db/tables/projects";
+import {
+  projectTaskAssignees,
+  projectTasks,
+  projects,
+} from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -25,7 +29,32 @@ export const createProjectTaskFn = createServerFn({ method: "POST" })
         .min(1, "At least one assignee is required"),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const session = context;
+
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get the project to check managerId
+    const [project] = await db
+      .select({ managerId: projects.managerId })
+      .from(projects)
+      .where(eq(projects.id, data.projectId))
+      .limit(1);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Check if user is project manager or admin
+    if (
+      session.user.id !== project.managerId &&
+      session.user.role !== "admin"
+    ) {
+      throw new Error("Only the project manager or admin can create tasks");
+    }
+
     const [task] = await db
       .insert(projectTasks)
       .values({
@@ -73,7 +102,12 @@ export const getProjectTasksFn = createServerFn({ method: "GET" })
         updatedAt: projectTasks.updatedAt,
       })
       .from(projectTasks)
-      .where(eq(projectTasks.projectId, data.projectId))
+      .where(
+        and(
+          eq(projectTasks.projectId, data.projectId),
+          isNull(projectTasks.deletedAt),
+        ),
+      )
       .orderBy(projectTasks.createdAt);
 
     // Get assignees for all tasks
@@ -144,7 +178,9 @@ export const getProjectTaskByIdFn = createServerFn({ method: "GET" })
         updatedAt: projectTasks.updatedAt,
       })
       .from(projectTasks)
-      .where(eq(projectTasks.id, data.taskId))
+      .where(
+        and(eq(projectTasks.id, data.taskId), isNull(projectTasks.deletedAt)),
+      )
       .limit(1);
 
     if (!task) {
@@ -168,9 +204,9 @@ export const getProjectTaskByIdFn = createServerFn({ method: "GET" })
     };
   });
 
-// Update Project Task - All authenticated users can update tasks
+// Update Project Task - Only Project Managers and Admins
 export const updateProjectTaskFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware, allRoles])
+  .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
       taskId: z.uuid("Invalid task ID"),
@@ -180,8 +216,44 @@ export const updateProjectTaskFn = createServerFn({ method: "POST" })
       dueDate: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const session = context;
+
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
     const { taskId, ...updateData } = data;
+
+    // Get the task to find its projectId
+    const [task] = await db
+      .select({ projectId: projectTasks.projectId })
+      .from(projectTasks)
+      .where(eq(projectTasks.id, taskId))
+      .limit(1);
+
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    // Get the project to check managerId
+    const [project] = await db
+      .select({ managerId: projects.managerId })
+      .from(projects)
+      .where(eq(projects.id, task.projectId))
+      .limit(1);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Check if user is project manager or admin
+    if (
+      session.user.id !== project.managerId &&
+      session.user.role !== "admin"
+    ) {
+      throw new Error("Only the project manager or admin can update tasks");
+    }
 
     const [updatedTask] = await db
       .update(projectTasks)
@@ -196,7 +268,7 @@ export const updateProjectTaskFn = createServerFn({ method: "POST" })
     return updatedTask;
   });
 
-// Delete Project Task - Only Project Managers and Admins
+// Delete Project Task (Soft Delete) - Only Project Managers and Admins
 export const deleteProjectTaskFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
@@ -204,10 +276,51 @@ export const deleteProjectTaskFn = createServerFn({ method: "POST" })
       taskId: z.uuid("Invalid task ID"),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const session = context;
+
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get the task to find its projectId
+    const [task] = await db
+      .select({ projectId: projectTasks.projectId })
+      .from(projectTasks)
+      .where(
+        and(eq(projectTasks.id, data.taskId), isNull(projectTasks.deletedAt)),
+      )
+      .limit(1);
+
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    // Get the project to check managerId
+    const [project] = await db
+      .select({ managerId: projects.managerId })
+      .from(projects)
+      .where(eq(projects.id, task.projectId))
+      .limit(1);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Check if user is project manager or admin
+    if (
+      session.user.id !== project.managerId &&
+      session.user.role !== "admin"
+    ) {
+      throw new Error("Only the project manager or admin can delete tasks");
+    }
+
     const [deletedTask] = await db
-      .delete(projectTasks)
-      .where(eq(projectTasks.id, data.taskId))
+      .update(projectTasks)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(eq(projectTasks.id, data.taskId), isNull(projectTasks.deletedAt)),
+      )
       .returning();
 
     if (!deletedTask) {
@@ -231,7 +344,7 @@ export const getNonAdminUsersFn = createServerFn({ method: "GET" })
         updatedAt: users.updatedAt,
       })
       .from(users)
-      .where(ne(users.role, "admin"))
+      .where(and(ne(users.role, "admin"), isNull(users.deletedAt)))
       .orderBy(users.createdAt);
 
     return nonAdminUsers;
@@ -246,16 +359,41 @@ export const addTaskAssigneeFn = createServerFn({ method: "POST" })
       userId: z.uuid("Invalid user ID"),
     }),
   )
-  .handler(async ({ data }) => {
-    // Check if task exists
+  .handler(async ({ data, context }) => {
+    const session = context;
+
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Check if task exists and get projectId
     const [task] = await db
-      .select({ id: projectTasks.id })
+      .select({ id: projectTasks.id, projectId: projectTasks.projectId })
       .from(projectTasks)
       .where(eq(projectTasks.id, data.taskId))
       .limit(1);
 
     if (!task) {
       throw new Error("Task not found");
+    }
+
+    // Get the project to check managerId
+    const [project] = await db
+      .select({ managerId: projects.managerId })
+      .from(projects)
+      .where(eq(projects.id, task.projectId))
+      .limit(1);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Check if user is project manager or admin
+    if (
+      session.user.id !== project.managerId &&
+      session.user.role !== "admin"
+    ) {
+      throw new Error("Only the project manager or admin can add assignees");
     }
 
     // Check if user is already assigned
@@ -298,7 +436,43 @@ export const removeTaskAssigneeFn = createServerFn({ method: "POST" })
       userId: z.uuid("Invalid user ID"),
     }),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const session = context;
+
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get the task to find its projectId
+    const [task] = await db
+      .select({ projectId: projectTasks.projectId })
+      .from(projectTasks)
+      .where(eq(projectTasks.id, data.taskId))
+      .limit(1);
+
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    // Get the project to check managerId
+    const [project] = await db
+      .select({ managerId: projects.managerId })
+      .from(projects)
+      .where(eq(projects.id, task.projectId))
+      .limit(1);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Check if user is project manager or admin
+    if (
+      session.user.id !== project.managerId &&
+      session.user.role !== "admin"
+    ) {
+      throw new Error("Only the project manager or admin can remove assignees");
+    }
+
     const [deletedAssignee] = await db
       .delete(projectTaskAssignees)
       .where(

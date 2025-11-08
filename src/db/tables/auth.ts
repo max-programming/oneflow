@@ -19,6 +19,7 @@ export const users = pgTable("users", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+  deletedAt: timestamp(),
 });
 
 export const sessions = pgTable("sessions", {

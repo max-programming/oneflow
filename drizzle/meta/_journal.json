@@ -43,6 +43,13 @@
       "when": 1762599689171,
       "tag": "0005_violet_microchip",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1762602926946,
+      "tag": "0006_cuddly_sir_ram",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { customers, projects } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -82,6 +82,7 @@ export const getProjectsFn = createServerFn({ method: "GET" })
       .from(projects)
       .leftJoin(customers, eq(projects.customerId, customers.id))
       .leftJoin(users, eq(projects.managerId, users.id))
+      .where(isNull(projects.deletedAt))
       .orderBy(desc(projects.createdAt));
     return allProjects;
   });
@@ -118,7 +119,7 @@ export const getProjectByIdFn = createServerFn({ method: "GET" })
       .from(projects)
       .leftJoin(customers, eq(projects.customerId, customers.id))
       .leftJoin(users, eq(projects.managerId, users.id))
-      .where(eq(projects.id, data.projectId))
+      .where(and(eq(projects.id, data.projectId), isNull(projects.deletedAt)))
       .limit(1);
 
     if (!project) {
@@ -168,7 +169,7 @@ export const updateProjectFn = createServerFn({ method: "POST" })
     return updatedProject;
   });
 
-// Delete Project - Only Project Managers and Admins
+// Delete Project (Soft Delete) - Only Project Managers and Admins
 export const deleteProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
@@ -178,8 +179,9 @@ export const deleteProjectFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const [deletedProject] = await db
-      .delete(projects)
-      .where(eq(projects.id, data.projectId))
+      .update(projects)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(projects.id, data.projectId), isNull(projects.deletedAt)))
       .returning();
 
     if (!deletedProject) {
@@ -203,7 +205,7 @@ export const getProjectManagersFn = createServerFn({ method: "GET" })
         updatedAt: users.updatedAt,
       })
       .from(users)
-      .where(eq(users.role, "project-manager"))
+      .where(and(eq(users.role, "project-manager"), isNull(users.deletedAt)))
       .orderBy(users.createdAt);
 
     return projectManagers;

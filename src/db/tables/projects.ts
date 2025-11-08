@@ -30,6 +30,7 @@ export const projects = pgTable("projects", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+  deletedAt: timestamp(),
 });
 
 export const projectTasks = pgTable("project_tasks", {
@@ -46,6 +47,7 @@ export const projectTasks = pgTable("project_tasks", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+  deletedAt: timestamp(),
 });
 
 export const projectTaskAssignees = pgTable("project_task_assignees", {
@@ -94,4 +96,5 @@ export const customers = pgTable("customers", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+  deletedAt: timestamp(),
 });

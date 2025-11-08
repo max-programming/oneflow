@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { customers } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -15,16 +15,16 @@ export const createCustomerFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       name: z.string().min(1, "Customer name is required"),
-      email: z.string().email(),
+      email: z.email(),
       phone: z.string().min(1, "Phone number is required"),
     }),
   )
   .handler(async ({ data }) => {
-    // Check if email or phone already exists
+    // Check if email or phone already exists (excluding deleted customers)
     const existingCustomer = await db
       .select()
       .from(customers)
-      .where(eq(customers.email, data.email))
+      .where(and(eq(customers.email, data.email), isNull(customers.deletedAt)))
       .limit(1);
 
     if (existingCustomer.length > 0) {
@@ -34,7 +34,7 @@ export const createCustomerFn = createServerFn({ method: "POST" })
     const existingPhone = await db
       .select()
       .from(customers)
-      .where(eq(customers.phone, data.phone))
+      .where(and(eq(customers.phone, data.phone), isNull(customers.deletedAt)))
       .limit(1);
 
     if (existingPhone.length > 0) {
@@ -57,19 +57,20 @@ export const createCustomerFn = createServerFn({ method: "POST" })
     return customer;
   });
 
-// Get All Customers - All authenticated users can view
+// Get All Customers - All authenticated users can view (excluding deleted)
 export const getCustomersFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .handler(async () => {
     const allCustomers = await db
       .select()
       .from(customers)
+      .where(isNull(customers.deletedAt))
       .orderBy(customers.createdAt);
 
     return allCustomers;
   });
 
-// Get Customer by ID - All authenticated users can view
+// Get Customer by ID - All authenticated users can view (excluding deleted)
 export const getCustomerByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
@@ -81,7 +82,7 @@ export const getCustomerByIdFn = createServerFn({ method: "GET" })
     const [customer] = await db
       .select()
       .from(customers)
-      .where(eq(customers.id, data.customerId))
+      .where(and(eq(customers.id, data.customerId), isNull(customers.deletedAt)))
       .limit(1);
 
     if (!customer) {
@@ -105,12 +106,12 @@ export const updateCustomerFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { customerId, ...updateData } = data;
 
-    // Check if email is being updated and if it already exists
+    // Check if email is being updated and if it already exists (excluding deleted)
     if (updateData.email) {
       const existingCustomer = await db
         .select()
         .from(customers)
-        .where(eq(customers.email, updateData.email))
+        .where(and(eq(customers.email, updateData.email), isNull(customers.deletedAt)))
         .limit(1);
 
       if (
@@ -121,12 +122,12 @@ export const updateCustomerFn = createServerFn({ method: "POST" })
       }
     }
 
-    // Check if phone is being updated and if it already exists
+    // Check if phone is being updated and if it already exists (excluding deleted)
     if (updateData.phone) {
       const existingPhone = await db
         .select()
         .from(customers)
-        .where(eq(customers.phone, updateData.phone))
+        .where(and(eq(customers.phone, updateData.phone), isNull(customers.deletedAt)))
         .limit(1);
 
       if (existingPhone.length > 0 && existingPhone[0].id !== customerId) {
@@ -147,7 +148,7 @@ export const updateCustomerFn = createServerFn({ method: "POST" })
     return updatedCustomer;
   });
 
-// Delete Customer - Sales/Finance and Admins can delete
+// Delete Customer (Soft Delete) - Sales/Finance and Admins can delete
 export const deleteCustomerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
@@ -157,8 +158,9 @@ export const deleteCustomerFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const [deletedCustomer] = await db
-      .delete(customers)
-      .where(eq(customers.id, data.customerId))
+      .update(customers)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(customers.id, data.customerId), isNull(customers.deletedAt)))
       .returning();
 
     if (!deletedCustomer) {
