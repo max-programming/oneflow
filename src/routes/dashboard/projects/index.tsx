@@ -12,13 +12,37 @@ import {
 } from "@/components/projects-list-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LayoutGrid, List, Loader2 } from "lucide-react";
+import z from "zod";
+
+const searchParamsSchema = z.object({
+  query: z.string().optional(),
+  manager: z.string().optional(),
+  customer: z.string().optional(),
+  status: z
+    .enum([
+      "all",
+      "in-progress",
+      "waiting-to-start",
+      "completed",
+      "cancelled",
+      "on-hold",
+    ])
+    .optional(),
+  startDate: z.date().optional(),
+  deadlineDate: z.date().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+type SearchParams = z.infer<typeof searchParamsSchema>;
 
 export const Route = createFileRoute("/dashboard/projects/")({
+  validateSearch: searchParamsSchema,
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const { session } = Route.useRouteContext();
+  const searchParams = Route.useSearch();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const loadMoreRef = useRef<HTMLDivElement>(null);
