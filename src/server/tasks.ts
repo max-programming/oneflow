@@ -521,10 +521,16 @@ export const getProjectTotalLoggedHoursFn = createServerFn({ method: "GET" })
       .from(projectTaskTimesheets)
       .where(eq(projectTaskTimesheets.projectId, data.projectId));
 
+    // Ensure startTime and endTime are Date objects
+    const processedTimesheets = timesheets.map(ts => ({
+      startTime: new Date(ts.startTime),
+      endTime: new Date(ts.endTime),
+    }));
+
     // Calculate total hours
-    const totalMinutes = timesheets.reduce((total, timesheet) => {
-      const start = new Date(timesheet.startTime);
-      const end = new Date(timesheet.endTime);
+    const totalMinutes = processedTimesheets.reduce((total, timesheet) => {
+      const start = timesheet.startTime;
+      const end = timesheet.endTime;
       const minutes = (end.getTime() - start.getTime()) / (1000 * 60);
       return total + minutes;
     }, 0);
@@ -561,7 +567,7 @@ export const getProjectWeeklyLoggedHoursFn = createServerFn({ method: "GET" })
       .where(
         and(
           eq(projectTaskTimesheets.projectId, data.projectId),
-          sql`${projectTaskTimesheets.startTime} >= ${sevenDaysAgo}`,
+          sql`${projectTaskTimesheets.startTime} >= ${sevenDaysAgo.toISOString()}`,
         ),
       );
 
@@ -594,10 +600,72 @@ export const getProjectWeeklyLoggedHoursFn = createServerFn({ method: "GET" })
       hoursByDay[dayName] += hours;
     });
 
+    // Ensure hours are numbers, not Date objects
+    Object.keys(hoursByDay).forEach(day => {
+      if (typeof hoursByDay[day] !== 'number') {
+        hoursByDay[day] = 0;
+      }
+    });
+
     return Object.entries(hoursByDay).map(([day, hours]) => ({
       day,
       hours: Math.round(hours * 10) / 10, // Round to 1 decimal place
     }));
+  });
+
+// Get Project Statistics - All authenticated users can view
+export const getProjectStatisticsFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.uuid("Invalid project ID"),
+    }),
+  )
+  .handler(async ({ data }) => {
+    // Get all tasks for the project (excluding soft deleted)
+    const tasks = await db
+      .select({
+        id: projectTasks.id,
+        status: projectTasks.status,
+      })
+      .from(projectTasks)
+      .where(
+        and(
+          eq(projectTasks.projectId, data.projectId),
+          isNull(projectTasks.deletedAt),
+        ),
+      );
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((task) => task.status === "done").length;
+    const openTasks = totalTasks - completedTasks;
+    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 10000) / 100 : 0;
+
+    // Get project dates to calculate total days
+    const [project] = await db
+      .select({
+        startDate: projects.startDate,
+        deadlineDate: projects.deadlineDate,
+      })
+      .from(projects)
+      .where(eq(projects.id, data.projectId))
+      .limit(1);
+
+    let totalDays = 0;
+    if (project?.startDate && project?.deadlineDate) {
+      const start = new Date(project.startDate);
+      const deadline = new Date(project.deadlineDate);
+      const diffTime = deadline.getTime() - start.getTime();
+      totalDays = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+    }
+
+    return {
+      totalTasks,
+      completedTasks,
+      openTasks,
+      progress, // Already rounded above
+      totalDays,
+    };
   });
 
 async function verifyProjectManager(

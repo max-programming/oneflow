@@ -13,6 +13,7 @@ import { TasksKanban } from "@/components/tasks/tasks-kanban";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  getProjectStatisticsFn,
   getProjectTotalLoggedHoursFn,
   getProjectWeeklyLoggedHoursFn,
 } from "@/server/tasks";
@@ -210,6 +211,14 @@ function RouteComponent() {
     queryFn: () => getProjectWeeklyLoggedHoursFn({ data: { projectId } }),
     enabled: !!projectId,
   });
+
+  const { data: projectStatistics } = useQuery({
+    queryKey: ["project-statistics", projectId],
+    queryFn: () => getProjectStatisticsFn({ data: { projectId } }),
+    enabled: !!projectId,
+  });
+
+
   // Check if user can manage tasks (project manager or admin)
   const canManageTasks =
     session?.user?.role === "admin" ||
@@ -267,22 +276,17 @@ function RouteComponent() {
     );
   }
 
-  // TODO: These fields are not available from the API yet, using dummy data
-  // Add these to the backend API and remove dummy data when available
-  const dummyEnhancements = {
-    progress: 93.65, // TODO: Calculate from project tasks completion
-    openTasks: 23, // TODO: Count from projectTasks table
-    totalTasks: 362, // TODO: Count from projectTasks table
-    totalDays: 407, // TODO: Calculate from start date and deadline
-  };
-
-  // Merge API data with dummy enhancements and dynamic timesheet data
+  // Merge API data with dynamic statistics and timesheet data
   const projectData = {
     ...project,
     daysLeft: project.deadlineDate
-      ? new Date(project.deadlineDate).getTime() - new Date().getTime()
+      ? Math.max(0, Math.ceil((new Date(project.deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
       : 0,
-    ...dummyEnhancements,
+    // Dynamic project statistics
+    progress: projectStatistics?.progress || 0,
+    openTasks: projectStatistics?.openTasks || 0,
+    totalTasks: projectStatistics?.totalTasks || 0,
+    totalDays: projectStatistics?.totalDays || 0,
     // Dynamic timesheet data
     totalLoggedHours: totalLoggedHours?.formatted || "0:00",
     weeklyHours: weeklyHours || [
@@ -516,20 +520,21 @@ function RouteComponent() {
                       <div>
                         <div className="flex items-center justify-between text-sm mb-2">
                           <span>
-                            {projectData.daysLeft} / {projectData.totalDays}{" "}
+                            {Math.max(0, projectData.daysLeft)} / {projectData.totalDays}{" "}
                             Days Left
                           </span>
                           <span className="font-medium">
-                            {(
-                              (projectData.daysLeft / projectData.totalDays) *
-                              100
-                            ).toFixed(1)}
-                            %
+                            {projectData.totalDays > 0
+                              ? Math.max(0, (projectData.daysLeft / projectData.totalDays) * 100).toFixed(1)
+                              : "0.0"
+                            }%
                           </span>
                         </div>
                         <Progress
                           value={
-                            (projectData.daysLeft / projectData.totalDays) * 100
+                            projectData.totalDays > 0
+                              ? Math.max(0, (projectData.daysLeft / projectData.totalDays) * 100)
+                              : 0
                           }
                           className="h-2"
                         />
