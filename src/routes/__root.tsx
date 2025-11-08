@@ -12,8 +12,12 @@ import type { QueryClient } from "@tanstack/react-query";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   {
-    beforeLoad: async () => {
-      const session = await getSessionFn();
+    beforeLoad: async ({ context }) => {
+      const session = await context.queryClient.fetchQuery({
+        queryKey: ["session"],
+        queryFn: () => getSessionFn(),
+        staleTime: 1000 * 60 * 15,
+      });
       return { session };
     },
     head: () => ({
