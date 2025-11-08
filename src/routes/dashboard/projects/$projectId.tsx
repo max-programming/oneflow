@@ -1,23 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Calendar,
-  Clock,
-  Users,
-  Target,
-  Tag,
-  Building2,
-  User,
-} from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectByIdFn } from "@/server/projects";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { Calendar, Clock, Tag, Target, User } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/projects/$projectId")({
   component: RouteComponent,
@@ -247,30 +238,16 @@ function RouteComponent() {
     openTasks: 23, // TODO: Count from projectTasks table
     totalTasks: 362, // TODO: Count from projectTasks table
     totalDays: 407, // TODO: Calculate from start date and deadline
-    customer: {
-      // API provides customerName, but missing email
-      name: project.customerName || "Unknown Customer",
-      email: "contact@enacton.com", // TODO: Add customer email to API response
-    },
-    trackedByPM: false, // TODO: Add this field to projects table
-    staffCanCreateTasks: true, // TODO: Add this field to projects table
-    leads: {
-      // TODO: Add project leads to database schema
-      qa: "Sakib Lakhani",
-      tech: "Preetham Chandra",
-      pm: project.managerName || "Unknown Manager",
-      superIncharge: "Ovesh Dhanga",
-    },
-    weeklyHours: [
-      // TODO: Implement time tracking and weekly hours calculation
-      { day: "Monday", hours: 8.5 },
-      { day: "Tuesday", hours: 7.2 },
-      { day: "Wednesday", hours: 9.1 },
-      { day: "Thursday", hours: 8.7 },
-      { day: "Friday", hours: 6.8 },
-      { day: "Saturday", hours: 0 },
-      { day: "Sunday", hours: 0 },
-    ],
+
+    // weeklyHours: [
+    //   { day: "Monday", hours: 8.5 },
+    //   { day: "Tuesday", hours: 7.2 },
+    //   { day: "Wednesday", hours: 9.1 },
+    //   { day: "Thursday", hours: 8.7 },
+    //   { day: "Friday", hours: 6.8 },
+    //   { day: "Saturday", hours: 0 },
+    //   { day: "Sunday", hours: 0 },
+    // ],
   };
 
   // Merge API data with dummy enhancements
@@ -282,8 +259,8 @@ function RouteComponent() {
     ...dummyEnhancements,
     // Override customer with API data where available
     customer: {
-      name: project.customerName || dummyEnhancements.customer.name,
-      email: dummyEnhancements.customer.email, // TODO: Get from API
+      name: project.customerName,
+      email: project.customerEmail,
     },
   };
 
@@ -348,14 +325,6 @@ function RouteComponent() {
                         <div className="space-y-4">
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 text-sm font-medium min-w-24">
-                              <Building2 className="h-4 w-4" />
-                              Project #
-                            </div>
-                            <span className="text-sm">{projectData.id}</span>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 text-sm font-medium min-w-24">
                               <Target className="h-4 w-4" />
                               Status
                             </div>
@@ -386,18 +355,12 @@ function RouteComponent() {
 
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 text-sm font-medium min-w-24">
-                              <Users className="h-4 w-4" />
-                              Staff Create Task?
+                              <User className="h-4 w-4" />
+                              Assigned Manager
                             </div>
-                            <Badge
-                              variant={
-                                projectData.staffCanCreateTasks
-                                  ? "default"
-                                  : "secondary"
-                              }
-                            >
-                              {projectData.staffCanCreateTasks ? "Yes" : "No"}
-                            </Badge>
+                            <span className="text-sm">
+                              {projectData.managerName}
+                            </span>
                           </div>
                         </div>
 
@@ -431,21 +394,6 @@ function RouteComponent() {
                             <span className="text-sm">
                               {projectData.deadlineDate || "Not set"}
                             </span>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <div className="text-sm font-medium min-w-24">
-                              Tracked by PM
-                            </div>
-                            <Badge
-                              variant={
-                                projectData.trackedByPM
-                                  ? "default"
-                                  : "secondary"
-                              }
-                            >
-                              {projectData.trackedByPM ? "Yes" : "No"}
-                            </Badge>
                           </div>
 
                           <div className="flex items-center gap-3">
@@ -484,40 +432,6 @@ function RouteComponent() {
                         <p className="text-sm text-muted-foreground">
                           {projectData.description}
                         </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Project Leads */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5" />
-                        Project Leads
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Lead QA</span>
-                        <span className="text-sm">{projectData.leads.qa}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Lead Tech</span>
-                        <span className="text-sm">
-                          {projectData.leads.tech}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Lead PM</span>
-                        <span className="text-sm">{projectData.leads.pm}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
-                          Super Incharge
-                        </span>
-                        <span className="text-sm">
-                          {projectData.leads.superIncharge}
-                        </span>
                       </div>
                     </CardContent>
                   </Card>
@@ -569,55 +483,6 @@ function RouteComponent() {
                           }
                           className="h-2"
                         />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Weekly Hours Chart */}
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <Clock className="h-4 w-4" />
-                          Total Logged Hours
-                        </CardTitle>
-                        <Button variant="ghost" size="sm" className="text-xs">
-                          This Week
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-xs">
-                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                          <span>Logged Hours</span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {projectData.weeklyHours.map((day) => (
-                            <div
-                              key={day.day}
-                              className="flex items-center gap-2"
-                            >
-                              <div className="text-xs text-muted-foreground min-w-16 text-right">
-                                {day.hours.toFixed(1)}h
-                              </div>
-                              <div className="flex-1">
-                                <div className="h-8 bg-muted rounded-sm overflow-hidden">
-                                  <div
-                                    className="h-full bg-blue-500 transition-all duration-300"
-                                    style={{
-                                      width: `${(day.hours / 10) * 100}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                              <div className="text-xs text-muted-foreground min-w-16">
-                                {day.day.slice(0, 3)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
