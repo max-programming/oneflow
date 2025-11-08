@@ -9,6 +9,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/sign-in")({
   component: SignIn,
@@ -16,6 +17,8 @@ export const Route = createFileRoute("/sign-in")({
 
 function SignIn() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -28,6 +31,7 @@ function SignIn() {
 
     try {
       await signInFn({ data: { email, password } });
+      await queryClient.invalidateQueries({ queryKey: ["session"] });
       router.navigate({ to: "/dashboard" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");
