@@ -77,7 +77,6 @@ export function ProjectsListTable({
   projects,
   isAdminOrProjectManager,
 }: ProjectsListTableProps) {
-
   return (
     <div className="space-y-4">
       <div className="rounded-md border overflow-hidden">
