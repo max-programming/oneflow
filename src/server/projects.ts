@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { customers, projects } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -82,8 +82,7 @@ export const getProjectsFn = createServerFn({ method: "GET" })
       .from(projects)
       .leftJoin(customers, eq(projects.customerId, customers.id))
       .leftJoin(users, eq(projects.managerId, users.id))
-      .orderBy(projects.createdAt);
-
+      .orderBy(desc(projects.createdAt));
     return allProjects;
   });
 

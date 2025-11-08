@@ -41,9 +41,42 @@ export const projectTasks = pgTable("project_tasks", {
   description: text(),
   startDate: date().notNull(),
   dueDate: date().notNull(),
-  assigneeId: uuid()
+  createdAt: timestamp().notNull().defaultNow(),
+  updatedAt: timestamp()
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const projectTaskAssignees = pgTable("project_task_assignees", {
+  id: uuid().primaryKey().defaultRandom(),
+  taskId: uuid()
+    .notNull()
+    .references(() => projectTasks.id),
+  userId: uuid()
     .notNull()
     .references(() => users.id),
+  createdAt: timestamp().notNull().defaultNow(),
+  updatedAt: timestamp()
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const projectTaskTimesheets = pgTable("project_task_timesheets", {
+  id: uuid().primaryKey().defaultRandom(),
+  projectId: uuid()
+    .notNull()
+    .references(() => projects.id),
+  taskId: uuid()
+    .notNull()
+    .references(() => projectTasks.id),
+  userId: uuid()
+    .notNull()
+    .references(() => users.id),
+  startTime: timestamp().notNull(),
+  endTime: timestamp().notNull(),
+  notes: text(),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp()
     .notNull()

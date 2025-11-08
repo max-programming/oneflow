@@ -36,6 +36,13 @@
       "when": 1762586273472,
       "tag": "0004_medical_vance_astro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1762599689171,
+      "tag": "0005_violet_microchip",
+      "breakpoints": true
     }
   ]
 }
