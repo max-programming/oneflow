@@ -1,4 +1,3 @@
-import "../auth.css";
 import {
   createFileRoute,
   Link,
@@ -17,12 +16,22 @@ import {
 } from "@/components/ui/input-group";
 import { useQueryClient } from "@tanstack/react-query";
 
+import authCss from "../auth.css?url";
+
 export const Route = createFileRoute("/sign-up")({
   beforeLoad: async ({ context }) => {
     if (context.session) {
       throw redirect({ to: "/dashboard" });
     }
   },
+  head: () => ({
+    links: [
+      {
+        rel: "stylesheet",
+        href: authCss,
+      },
+    ],
+  }),
   component: SignUp,
 });
 
