@@ -184,10 +184,54 @@ function RouteComponent() {
   return (
     <div className="relative p-6">
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <form
+        
+          <DialogTrigger asChild>
+            <Button className="absolute top-6 right-6" variant="default">
+            Create Project
+        </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <DialogHeader className="space-y-3 border-b pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {breadcrumbItems.map((item, index) => (
+                    <div key={item.path} className="flex items-center gap-2">
+                      {index > 0 && <ChevronRight className="size-3.5" />}
+                      <Link
+                        to={item.path}
+                        className={`capitalize transition-colors hover:text-foreground ${
+                          index === breadcrumbItems.length - 1
+                            ? "text-foreground font-medium"
+                            : "cursor-pointer"
+                        }`}
+                        onClick={(e) => {
+                          if (index < breadcrumbItems.length - 1) {
+                            e.preventDefault();
+                            navigate({ to: item.path });
+                            setDialogOpen(false);
+                          }
+                        }}
+                      >
+                        {item.segment === "dashboard"
+                          ? "Dashboard"
+                          : item.segment}
+                      </Link>
+                    </div>
+                  ))}
+                  <ChevronRight className="size-3.5" />
+                  <span className="text-foreground font-medium">
+                                Create Project
+                  </span>
+                </div>
+                            </div>
+              <DialogTitle className="text-left text-2xl font-semibold">
+                Create New Project
+              </DialogTitle>
+          </DialogHeader>
+          <form
           onSubmit={async (e) => {
             e.preventDefault();
-            
+            console.log({projectManager, projectName, customer});
             // Validate required fields
             if (!projectName.trim()) {
               return;
@@ -245,50 +289,6 @@ function RouteComponent() {
             }
           }}
         >
-          <DialogTrigger asChild>
-            <Button className="absolute top-6 right-6" variant="default">
-            Create Project
-        </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <DialogHeader className="space-y-3 border-b pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  {breadcrumbItems.map((item, index) => (
-                    <div key={item.path} className="flex items-center gap-2">
-                      {index > 0 && <ChevronRight className="size-3.5" />}
-                      <Link
-                        to={item.path}
-                        className={`capitalize transition-colors hover:text-foreground ${
-                          index === breadcrumbItems.length - 1
-                            ? "text-foreground font-medium"
-                            : "cursor-pointer"
-                        }`}
-                        onClick={(e) => {
-                          if (index < breadcrumbItems.length - 1) {
-                            e.preventDefault();
-                            navigate({ to: item.path });
-                            setDialogOpen(false);
-                          }
-                        }}
-                      >
-                        {item.segment === "dashboard"
-                          ? "Dashboard"
-                          : item.segment}
-                      </Link>
-                    </div>
-                  ))}
-                  <ChevronRight className="size-3.5" />
-                  <span className="text-foreground font-medium">
-                                Create Project
-                  </span>
-                </div>
-                            </div>
-              <DialogTitle className="text-left text-2xl font-semibold">
-                Create New Project
-              </DialogTitle>
-          </DialogHeader>
-
             <div className="space-y-6 py-4">
               {/* Project Name */}
               <div className="space-y-2">
@@ -580,8 +580,8 @@ function RouteComponent() {
                 {isSubmitting ? "Saving..." : "Save Project"}
               </Button>
           </DialogFooter>
-        </DialogContent>
       </form>
+        </DialogContent>
     </Dialog>
     </div>
   );
