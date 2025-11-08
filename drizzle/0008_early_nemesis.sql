@@ -1,14 +1,50 @@
-CREATE TYPE "public"."expense_approval_status" AS ENUM('pending', 'approved', 'rejected');--> statement-breakpoint
-CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'sent', 'paid', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."payment_status" AS ENUM('unpaid', 'partially_paid', 'fully_paid');--> statement-breakpoint
-CREATE TYPE "public"."purchase_order_status" AS ENUM('draft', 'confirmed', 'done', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."sales_order_status" AS ENUM('draft', 'confirmed', 'done', 'cancelled');--> statement-breakpoint
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'expense_approval_status') THEN
+    CREATE TYPE public.expense_approval_status AS ENUM('pending', 'approved', 'rejected');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_status') THEN
+    CREATE TYPE public.invoice_status AS ENUM('draft', 'sent', 'paid', 'cancelled');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
+    CREATE TYPE public.payment_status AS ENUM('unpaid', 'partially_paid', 'fully_paid');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'purchase_order_status') THEN
+    CREATE TYPE public.purchase_order_status AS ENUM('draft', 'confirmed', 'done', 'cancelled');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sales_order_status') THEN
+    CREATE TYPE public.sales_order_status AS ENUM('draft', 'confirmed', 'done', 'cancelled');
+  END IF;
+END
+$$;
+
+
 CREATE TABLE "customer_invoices" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"invoice_number" text NOT NULL,
 	"project_id" uuid,
 	"customer_id" uuid NOT NULL,
-	"sales_order_id" uuid,
+	"sales_order_id" serial NOT NULL,
 	"description" text,
 	"amount" numeric(10, 2) NOT NULL,
 	"tax_percentage" numeric(5, 2) DEFAULT '0' NOT NULL,
@@ -26,7 +62,7 @@ CREATE TABLE "customer_invoices" (
 );
 --> statement-breakpoint
 CREATE TABLE "expenses" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"expense_number" text NOT NULL,
 	"project_id" uuid,
 	"user_id" uuid NOT NULL,
@@ -48,10 +84,10 @@ CREATE TABLE "expenses" (
 );
 --> statement-breakpoint
 CREATE TABLE "purchase_orders" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"po_number" text NOT NULL,
 	"project_id" uuid,
-	"vendor_id" uuid NOT NULL,
+	"vendor_id" serial NOT NULL,
 	"description" text,
 	"amount" numeric(10, 2) NOT NULL,
 	"tax_percentage" numeric(5, 2) DEFAULT '0' NOT NULL,
@@ -66,7 +102,7 @@ CREATE TABLE "purchase_orders" (
 );
 --> statement-breakpoint
 CREATE TABLE "sales_orders" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"order_number" text NOT NULL,
 	"project_id" uuid,
 	"customer_id" uuid NOT NULL,
@@ -84,11 +120,11 @@ CREATE TABLE "sales_orders" (
 );
 --> statement-breakpoint
 CREATE TABLE "vendor_bills" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"bill_number" text NOT NULL,
 	"project_id" uuid,
-	"vendor_id" uuid NOT NULL,
-	"purchase_order_id" uuid,
+	"vendor_id" serial NOT NULL,
+	"purchase_order_id" serial NOT NULL,
 	"description" text,
 	"amount" numeric(10, 2) NOT NULL,
 	"tax_percentage" numeric(5, 2) DEFAULT '0' NOT NULL,
@@ -106,7 +142,7 @@ CREATE TABLE "vendor_bills" (
 );
 --> statement-breakpoint
 CREATE TABLE "vendors" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"email" text NOT NULL,
 	"phone" text NOT NULL,

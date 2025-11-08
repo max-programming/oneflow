@@ -15,24 +15,6 @@ import {
   salesFinanceOrAdmin,
 } from "./auth-middleware";
 
-// Helper function to generate next Bill number
-async function generateNextBillNumber(): Promise<string> {
-  const lastBill = await db
-    .select({ billNumber: vendorBills.billNumber })
-    .from(vendorBills)
-    .where(isNull(vendorBills.deletedAt))
-    .orderBy(desc(vendorBills.createdAt))
-    .limit(1);
-
-  if (lastBill.length === 0) {
-    return "BILL-001";
-  }
-
-  const lastNumber = parseInt(lastBill[0].billNumber.split("-")[1]);
-  const nextNumber = lastNumber + 1;
-  return `BILL-${nextNumber.toString().padStart(3, "0")}`;
-}
-
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
   const baseAmount = parseFloat(amount);
@@ -60,8 +42,8 @@ export const createVendorBillFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       projectId: z.uuid().optional().nullable(),
-      vendorId: z.uuid("Vendor is required"),
-      purchaseOrderId: z.uuid().optional().nullable(),
+      vendorId: z.number().int().positive("Vendor is required"),
+      purchaseOrderId: z.number().int().positive().optional().nullable(),
       description: z.string().optional(),
       amount: z.string().min(1, "Amount is required"),
       taxPercentage: z.string().default("0"),
@@ -73,19 +55,17 @@ export const createVendorBillFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
 
-    // Generate next Bill number
-    const billNumber = await generateNextBillNumber();
-
     // Calculate total amount
     const totalAmount = calculateTotal(data.amount, data.taxPercentage);
 
+    // Insert first with a temporary bill number
     const [bill] = await db
       .insert(vendorBills)
       .values({
-        billNumber,
+        billNumber: "TEMP", // Temporary, will be updated
         projectId: data.projectId,
         vendorId: data.vendorId,
-        purchaseOrderId: data.purchaseOrderId,
+        purchaseOrderId: data.purchaseOrderId ?? undefined,
         description: data.description,
         amount: data.amount,
         taxPercentage: data.taxPercentage,
@@ -103,7 +83,15 @@ export const createVendorBillFn = createServerFn({ method: "POST" })
       throw new Error("Failed to create vendor bill");
     }
 
-    return bill;
+    // Update with actual bill number based on ID
+    const billNumber = `BILL-${bill.id.toString().padStart(3, "0")}`;
+    const [updatedBill] = await db
+      .update(vendorBills)
+      .set({ billNumber })
+      .where(eq(vendorBills.id, bill.id))
+      .returning();
+
+    return updatedBill;
   });
 
 // Get All Vendor Bills - All authenticated users can view (excluding deleted)
@@ -166,7 +154,7 @@ export const getVendorBillByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      billId: z.uuid("Invalid bill ID"),
+      billId: z.number().int().positive("Invalid bill ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -220,10 +208,10 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      billId: z.uuid("Invalid bill ID"),
+      billId: z.number().int().positive("Invalid bill ID"),
       projectId: z.uuid().optional().nullable(),
-      vendorId: z.uuid().optional(),
-      purchaseOrderId: z.uuid().optional().nullable(),
+      vendorId: z.number().int().positive().optional(),
+      purchaseOrderId: z.number().int().positive().optional().nullable(),
       description: z.string().optional(),
       amount: z.string().optional(),
       taxPercentage: z.string().optional(),
@@ -235,8 +223,14 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { billId, ...updateData } = data;
 
+    // Clean update data: convert null to undefined for optional foreign keys
+    const cleanedData: any = { ...updateData };
+    if (cleanedData.purchaseOrderId === null) {
+      cleanedData.purchaseOrderId = undefined;
+    }
+
     // If amount or tax is being updated, recalculate total
-    if (updateData.amount || updateData.taxPercentage) {
+    if (cleanedData.amount || cleanedData.taxPercentage) {
       // Fetch current values if not all provided
       const [current] = await db
         .select({
@@ -252,8 +246,8 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
         throw new Error("Vendor bill not found");
       }
 
-      const finalAmount = updateData.amount || current.amount;
-      const finalTax = updateData.taxPercentage || current.taxPercentage;
+      const finalAmount = cleanedData.amount || current.amount;
+      const finalTax = cleanedData.taxPercentage || current.taxPercentage;
 
       const totalAmount = calculateTotal(finalAmount, finalTax);
       const paymentStatus = determinePaymentStatus(
@@ -263,7 +257,7 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
 
       const [updatedBill] = await db
         .update(vendorBills)
-        .set({ ...updateData, totalAmount, paymentStatus })
+        .set({ ...cleanedData, totalAmount, paymentStatus })
         .where(eq(vendorBills.id, billId))
         .returning();
 
@@ -276,7 +270,7 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
 
     const [updatedBill] = await db
       .update(vendorBills)
-      .set(updateData)
+      .set(cleanedData)
       .where(eq(vendorBills.id, billId))
       .returning();
 
@@ -292,7 +286,7 @@ export const recordVendorBillPaymentFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      billId: z.uuid("Invalid bill ID"),
+      billId: z.number().int().positive("Invalid bill ID"),
       paymentAmount: z.string().min(1, "Payment amount is required"),
     }),
   )
@@ -347,7 +341,7 @@ export const deleteVendorBillFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      billId: z.uuid("Invalid bill ID"),
+      billId: z.number().int().positive("Invalid bill ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -371,7 +365,7 @@ export const linkVendorBillToProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      billId: z.uuid("Invalid bill ID"),
+      billId: z.number().int().positive("Invalid bill ID"),
       projectId: z.uuid("Invalid project ID"),
     }),
   )
@@ -394,7 +388,7 @@ export const unlinkVendorBillFromProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      billId: z.uuid("Invalid bill ID"),
+      billId: z.number().int().positive("Invalid bill ID"),
     }),
   )
   .handler(async ({ data }) => {

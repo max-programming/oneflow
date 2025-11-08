@@ -9,24 +9,6 @@ import {
   salesFinanceOrAdmin,
 } from "./auth-middleware";
 
-// Helper function to generate next PO number
-async function generateNextPONumber(): Promise<string> {
-  const lastPO = await db
-    .select({ poNumber: purchaseOrders.poNumber })
-    .from(purchaseOrders)
-    .where(isNull(purchaseOrders.deletedAt))
-    .orderBy(desc(purchaseOrders.createdAt))
-    .limit(1);
-
-  if (lastPO.length === 0) {
-    return "PO-001";
-  }
-
-  const lastNumber = parseInt(lastPO[0].poNumber.split("-")[1]);
-  const nextNumber = lastNumber + 1;
-  return `PO-${nextNumber.toString().padStart(3, "0")}`;
-}
-
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
   const baseAmount = parseFloat(amount);
@@ -41,7 +23,7 @@ export const createPurchaseOrderFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       projectId: z.uuid().optional().nullable(),
-      vendorId: z.uuid("Vendor is required"),
+      vendorId: z.number().int().positive("Vendor is required"),
       description: z.string().optional(),
       amount: z.string().min(1, "Amount is required"),
       taxPercentage: z.string().default("0"),
@@ -54,16 +36,14 @@ export const createPurchaseOrderFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
 
-    // Generate next PO number
-    const poNumber = await generateNextPONumber();
-
     // Calculate total amount
     const totalAmount = calculateTotal(data.amount, data.taxPercentage);
 
+    // Insert first with a temporary PO number
     const [purchaseOrder] = await db
       .insert(purchaseOrders)
       .values({
-        poNumber,
+        poNumber: "TEMP", // Temporary, will be updated
         projectId: data.projectId,
         vendorId: data.vendorId,
         description: data.description,
@@ -80,7 +60,15 @@ export const createPurchaseOrderFn = createServerFn({ method: "POST" })
       throw new Error("Failed to create purchase order");
     }
 
-    return purchaseOrder;
+    // Update with actual PO number based on ID
+    const poNumber = `PO-${purchaseOrder.id.toString().padStart(3, "0")}`;
+    const [updatedPurchaseOrder] = await db
+      .update(purchaseOrders)
+      .set({ poNumber })
+      .where(eq(purchaseOrders.id, purchaseOrder.id))
+      .returning();
+
+    return updatedPurchaseOrder;
   });
 
 // Get All Purchase Orders - All authenticated users can view (excluding deleted)
@@ -134,7 +122,7 @@ export const getPurchaseOrderByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      purchaseOrderId: z.uuid("Invalid purchase order ID"),
+      purchaseOrderId: z.number().int().positive("Invalid purchase order ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -182,9 +170,9 @@ export const updatePurchaseOrderFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      purchaseOrderId: z.uuid("Invalid purchase order ID"),
+      purchaseOrderId: z.number().int().positive("Invalid purchase order ID"),
       projectId: z.uuid().optional().nullable(),
-      vendorId: z.uuid().optional(),
+      vendorId: z.number().int().positive().optional(),
       description: z.string().optional(),
       amount: z.string().optional(),
       taxPercentage: z.string().optional(),
@@ -247,7 +235,7 @@ export const deletePurchaseOrderFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      purchaseOrderId: z.uuid("Invalid purchase order ID"),
+      purchaseOrderId: z.number().int().positive("Invalid purchase order ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -274,7 +262,7 @@ export const linkPurchaseOrderToProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      purchaseOrderId: z.uuid("Invalid purchase order ID"),
+      purchaseOrderId: z.number().int().positive("Invalid purchase order ID"),
       projectId: z.uuid("Invalid project ID"),
     }),
   )
@@ -299,7 +287,7 @@ export const unlinkPurchaseOrderFromProjectFn = createServerFn({
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      purchaseOrderId: z.uuid("Invalid purchase order ID"),
+      purchaseOrderId: z.number().int().positive("Invalid purchase order ID"),
     }),
   )
   .handler(async ({ data }) => {

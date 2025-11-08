@@ -92,7 +92,7 @@ function VendorBillCreateDialog() {
   // Filter purchase orders by selected vendor
   const filteredPurchaseOrders = React.useMemo(() => {
     if (!purchaseOrders || !formData.vendorId) return [];
-    return purchaseOrders.filter((po) => po.vendorId === formData.vendorId);
+    return purchaseOrders.filter((po) => po.vendorId === parseInt(formData.vendorId));
   }, [purchaseOrders, formData.vendorId]);
 
   React.useEffect(() => {
@@ -141,8 +141,9 @@ function VendorBillCreateDialog() {
     createMutation.mutate({
       data: {
         ...formData,
+        vendorId: parseInt(formData.vendorId),
         projectId: formData.projectId || null,
-        purchaseOrderId: formData.purchaseOrderId || null,
+        purchaseOrderId: formData.purchaseOrderId ? parseInt(formData.purchaseOrderId) : null,
       },
     });
   }
@@ -178,7 +179,7 @@ function VendorBillCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {vendors?.map((vendor) => (
-                  <SelectItem key={vendor.id} value={vendor.id}>
+                  <SelectItem key={vendor.id} value={vendor.id.toString()}>
                     {vendor.name}
                   </SelectItem>
                 ))}
@@ -223,7 +224,7 @@ function VendorBillCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {filteredPurchaseOrders?.map((po) => (
-                  <SelectItem key={po.id} value={po.id}>
+                  <SelectItem key={po.id} value={po.id.toString()}>
                     {po.poNumber} - ₹{parseFloat(po.totalAmount).toLocaleString()}
                   </SelectItem>
                 ))}
@@ -468,7 +469,7 @@ function VendorBillDeleteDialog({ bill }: VendorBillDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (billId: string) => deleteVendorBillFn({ data: { billId } }),
+    mutationFn: (billId: number) => deleteVendorBillFn({ data: { billId } }),
     onSuccess: () => {
       toast.success("Vendor bill deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["vendorBills"] });

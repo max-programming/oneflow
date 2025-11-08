@@ -79,7 +79,7 @@ export const getVendorByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      vendorId: z.uuid("Invalid vendor ID"),
+      vendorId: z.number().int().positive("Invalid vendor ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -101,7 +101,7 @@ export const updateVendorFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      vendorId: z.uuid("Invalid vendor ID"),
+      vendorId: z.number().int().positive("Invalid vendor ID"),
       name: z.string().min(1, "Vendor name is required").optional(),
       email: z.string().email().optional(),
       phone: z.string().min(1, "Phone number is required").optional(),
@@ -117,7 +117,9 @@ export const updateVendorFn = createServerFn({ method: "POST" })
       const existingVendor = await db
         .select()
         .from(vendors)
-        .where(and(eq(vendors.email, updateData.email), isNull(vendors.deletedAt)))
+        .where(
+          and(eq(vendors.email, updateData.email), isNull(vendors.deletedAt)),
+        )
         .limit(1);
 
       if (existingVendor.length > 0 && existingVendor[0].id !== vendorId) {
@@ -130,7 +132,9 @@ export const updateVendorFn = createServerFn({ method: "POST" })
       const existingPhone = await db
         .select()
         .from(vendors)
-        .where(and(eq(vendors.phone, updateData.phone), isNull(vendors.deletedAt)))
+        .where(
+          and(eq(vendors.phone, updateData.phone), isNull(vendors.deletedAt)),
+        )
         .limit(1);
 
       if (existingPhone.length > 0 && existingPhone[0].id !== vendorId) {
@@ -156,7 +160,7 @@ export const deleteVendorFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      vendorId: z.uuid("Invalid vendor ID"),
+      vendorId: z.number().int().positive("Invalid vendor ID"),
     }),
   )
   .handler(async ({ data }) => {

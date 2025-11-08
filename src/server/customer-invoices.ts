@@ -15,24 +15,6 @@ import {
   salesFinanceOrAdmin,
 } from "./auth-middleware";
 
-// Helper function to generate next Invoice number
-async function generateNextInvoiceNumber(): Promise<string> {
-  const lastInvoice = await db
-    .select({ invoiceNumber: customerInvoices.invoiceNumber })
-    .from(customerInvoices)
-    .where(isNull(customerInvoices.deletedAt))
-    .orderBy(desc(customerInvoices.createdAt))
-    .limit(1);
-
-  if (lastInvoice.length === 0) {
-    return "INV-001";
-  }
-
-  const lastNumber = parseInt(lastInvoice[0].invoiceNumber.split("-")[1]);
-  const nextNumber = lastNumber + 1;
-  return `INV-${nextNumber.toString().padStart(3, "0")}`;
-}
-
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
   const baseAmount = parseFloat(amount);
@@ -61,7 +43,7 @@ export const createCustomerInvoiceFn = createServerFn({ method: "POST" })
     z.object({
       projectId: z.uuid().optional().nullable(),
       customerId: z.uuid("Customer is required"),
-      salesOrderId: z.uuid().optional().nullable(),
+      salesOrderId: z.number().int().positive().optional().nullable(),
       description: z.string().optional(),
       amount: z.string().min(1, "Amount is required"),
       taxPercentage: z.string().default("0"),
@@ -73,19 +55,17 @@ export const createCustomerInvoiceFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
 
-    // Generate next Invoice number
-    const invoiceNumber = await generateNextInvoiceNumber();
-
     // Calculate total amount
     const totalAmount = calculateTotal(data.amount, data.taxPercentage);
 
+    // Insert first with a temporary invoice number
     const [invoice] = await db
       .insert(customerInvoices)
       .values({
-        invoiceNumber,
+        invoiceNumber: "TEMP", // Temporary, will be updated
         projectId: data.projectId,
         customerId: data.customerId,
-        salesOrderId: data.salesOrderId,
+        salesOrderId: data.salesOrderId ?? undefined,
         description: data.description,
         amount: data.amount,
         taxPercentage: data.taxPercentage,
@@ -103,7 +83,15 @@ export const createCustomerInvoiceFn = createServerFn({ method: "POST" })
       throw new Error("Failed to create customer invoice");
     }
 
-    return invoice;
+    // Update with actual invoice number based on ID
+    const invoiceNumber = `INV-${invoice.id.toString().padStart(3, "0")}`;
+    const [updatedInvoice] = await db
+      .update(customerInvoices)
+      .set({ invoiceNumber })
+      .where(eq(customerInvoices.id, invoice.id))
+      .returning();
+
+    return updatedInvoice;
   });
 
 // Get All Customer Invoices - All authenticated users can view (excluding deleted)
@@ -163,7 +151,7 @@ export const getCustomerInvoiceByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      invoiceId: z.uuid("Invalid invoice ID"),
+      invoiceId: z.number().int().positive("Invalid invoice ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -217,10 +205,10 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      invoiceId: z.uuid("Invalid invoice ID"),
+      invoiceId: z.number().int().positive("Invalid invoice ID"),
       projectId: z.uuid().optional().nullable(),
       customerId: z.uuid().optional(),
-      salesOrderId: z.uuid().optional().nullable(),
+      salesOrderId: z.number().int().positive().optional().nullable(),
       description: z.string().optional(),
       amount: z.string().optional(),
       taxPercentage: z.string().optional(),
@@ -232,8 +220,14 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { invoiceId, ...updateData } = data;
 
+    // Clean update data: convert null to undefined for optional foreign keys
+    const cleanedData: any = { ...updateData };
+    if (cleanedData.salesOrderId === null) {
+      cleanedData.salesOrderId = undefined;
+    }
+
     // If amount or tax is being updated, recalculate total
-    if (updateData.amount || updateData.taxPercentage) {
+    if (cleanedData.amount || cleanedData.taxPercentage) {
       // Fetch current values if not all provided
       const [current] = await db
         .select({
@@ -249,8 +243,8 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
         throw new Error("Customer invoice not found");
       }
 
-      const finalAmount = updateData.amount || current.amount;
-      const finalTax = updateData.taxPercentage || current.taxPercentage;
+      const finalAmount = cleanedData.amount || current.amount;
+      const finalTax = cleanedData.taxPercentage || current.taxPercentage;
 
       const totalAmount = calculateTotal(finalAmount, finalTax);
       const paymentStatus = determinePaymentStatus(
@@ -260,7 +254,7 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
 
       const [updatedInvoice] = await db
         .update(customerInvoices)
-        .set({ ...updateData, totalAmount, paymentStatus })
+        .set({ ...cleanedData, totalAmount, paymentStatus })
         .where(eq(customerInvoices.id, invoiceId))
         .returning();
 
@@ -273,7 +267,7 @@ export const updateCustomerInvoiceFn = createServerFn({ method: "POST" })
 
     const [updatedInvoice] = await db
       .update(customerInvoices)
-      .set(updateData)
+      .set(cleanedData)
       .where(eq(customerInvoices.id, invoiceId))
       .returning();
 
@@ -289,7 +283,7 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      invoiceId: z.uuid("Invalid invoice ID"),
+      invoiceId: z.number().int().positive("Invalid invoice ID"),
       paymentAmount: z.string().min(1, "Payment amount is required"),
     }),
   )
@@ -344,7 +338,7 @@ export const deleteCustomerInvoiceFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      invoiceId: z.uuid("Invalid invoice ID"),
+      invoiceId: z.number().int().positive("Invalid invoice ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -373,7 +367,7 @@ export const linkCustomerInvoiceToProjectFn = createServerFn({
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      invoiceId: z.uuid("Invalid invoice ID"),
+      invoiceId: z.number().int().positive("Invalid invoice ID"),
       projectId: z.uuid("Invalid project ID"),
     }),
   )
@@ -398,7 +392,7 @@ export const unlinkCustomerInvoiceFromProjectFn = createServerFn({
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      invoiceId: z.uuid("Invalid invoice ID"),
+      invoiceId: z.number().int().positive("Invalid invoice ID"),
     }),
   )
   .handler(async ({ data }) => {

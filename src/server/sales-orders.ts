@@ -9,24 +9,6 @@ import {
   salesFinanceOrAdmin,
 } from "./auth-middleware";
 
-// Helper function to generate next SO number
-async function generateNextSONumber(): Promise<string> {
-  const lastSO = await db
-    .select({ orderNumber: salesOrders.orderNumber })
-    .from(salesOrders)
-    .where(isNull(salesOrders.deletedAt))
-    .orderBy(desc(salesOrders.createdAt))
-    .limit(1);
-
-  if (lastSO.length === 0) {
-    return "SO-001";
-  }
-
-  const lastNumber = parseInt(lastSO[0].orderNumber.split("-")[1]);
-  const nextNumber = lastNumber + 1;
-  return `SO-${nextNumber.toString().padStart(3, "0")}`;
-}
-
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
   const baseAmount = parseFloat(amount);
@@ -54,16 +36,14 @@ export const createSalesOrderFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
 
-    // Generate next SO number
-    const orderNumber = await generateNextSONumber();
-
     // Calculate total amount
     const totalAmount = calculateTotal(data.amount, data.taxPercentage);
 
+    // Insert first with a temporary order number
     const [salesOrder] = await db
       .insert(salesOrders)
       .values({
-        orderNumber,
+        orderNumber: "TEMP", // Temporary, will be updated
         projectId: data.projectId,
         customerId: data.customerId,
         description: data.description,
@@ -80,7 +60,15 @@ export const createSalesOrderFn = createServerFn({ method: "POST" })
       throw new Error("Failed to create sales order");
     }
 
-    return salesOrder;
+    // Update with actual order number based on ID
+    const orderNumber = `SO-${salesOrder.id.toString().padStart(3, "0")}`;
+    const [updatedSalesOrder] = await db
+      .update(salesOrders)
+      .set({ orderNumber })
+      .where(eq(salesOrders.id, salesOrder.id))
+      .returning();
+
+    return updatedSalesOrder;
   });
 
 // Get All Sales Orders - All authenticated users can view (excluding deleted)
@@ -134,7 +122,7 @@ export const getSalesOrderByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      salesOrderId: z.uuid("Invalid sales order ID"),
+      salesOrderId: z.number().int().positive("Invalid sales order ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -182,7 +170,7 @@ export const updateSalesOrderFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      salesOrderId: z.uuid("Invalid sales order ID"),
+      salesOrderId: z.number().int().positive("Invalid sales order ID"),
       projectId: z.uuid().optional().nullable(),
       customerId: z.uuid().optional(),
       description: z.string().optional(),
@@ -247,7 +235,7 @@ export const deleteSalesOrderFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      salesOrderId: z.uuid("Invalid sales order ID"),
+      salesOrderId: z.number().int().positive("Invalid sales order ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -274,7 +262,7 @@ export const linkSalesOrderToProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      salesOrderId: z.uuid("Invalid sales order ID"),
+      salesOrderId: z.number().int().positive("Invalid sales order ID"),
       projectId: z.uuid("Invalid project ID"),
     }),
   )
@@ -297,7 +285,7 @@ export const unlinkSalesOrderFromProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      salesOrderId: z.uuid("Invalid sales order ID"),
+      salesOrderId: z.number().int().positive("Invalid sales order ID"),
     }),
   )
   .handler(async ({ data }) => {

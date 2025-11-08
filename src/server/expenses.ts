@@ -10,24 +10,6 @@ import {
   salesFinanceOrAdmin,
 } from "./auth-middleware";
 
-// Helper function to generate next Expense number
-async function generateNextExpenseNumber(): Promise<string> {
-  const lastExpense = await db
-    .select({ expenseNumber: expenses.expenseNumber })
-    .from(expenses)
-    .where(isNull(expenses.deletedAt))
-    .orderBy(desc(expenses.createdAt))
-    .limit(1);
-
-  if (lastExpense.length === 0) {
-    return "EXP-001";
-  }
-
-  const lastNumber = parseInt(lastExpense[0].expenseNumber.split("-")[1]);
-  const nextNumber = lastNumber + 1;
-  return `EXP-${nextNumber.toString().padStart(3, "0")}`;
-}
-
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
   const baseAmount = parseFloat(amount);
@@ -53,16 +35,14 @@ export const createExpenseFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
 
-    // Generate next Expense number
-    const expenseNumber = await generateNextExpenseNumber();
-
     // Calculate total amount
     const totalAmount = calculateTotal(data.amount, data.taxPercentage);
 
+    // Insert first with a temporary expense number
     const [expense] = await db
       .insert(expenses)
       .values({
-        expenseNumber,
+        expenseNumber: "TEMP", // Temporary, will be updated
         projectId: data.projectId,
         userId,
         description: data.description,
@@ -80,7 +60,15 @@ export const createExpenseFn = createServerFn({ method: "POST" })
       throw new Error("Failed to create expense");
     }
 
-    return expense;
+    // Update with actual expense number based on ID
+    const expenseNumber = `EXP-${expense.id.toString().padStart(3, "0")}`;
+    const [updatedExpense] = await db
+      .update(expenses)
+      .set({ expenseNumber })
+      .where(eq(expenses.id, expense.id))
+      .returning();
+
+    return updatedExpense;
   });
 
 // Get All Expenses - All authenticated users can view (excluding deleted)
@@ -150,7 +138,7 @@ export const getExpenseByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      expenseId: z.uuid("Invalid expense ID"),
+      expenseId: z.number().int().positive("Invalid expense ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -198,7 +186,7 @@ export const updateExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      expenseId: z.uuid("Invalid expense ID"),
+      expenseId: z.number().int().positive("Invalid expense ID"),
       projectId: z.uuid().optional().nullable(),
       description: z.string().optional(),
       category: z.string().optional(),
@@ -285,7 +273,7 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      expenseId: z.uuid("Invalid expense ID"),
+      expenseId: z.number().int().positive("Invalid expense ID"),
       notes: z.string().optional(),
     }),
   )
@@ -332,7 +320,7 @@ export const rejectExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      expenseId: z.uuid("Invalid expense ID"),
+      expenseId: z.number().int().positive("Invalid expense ID"),
       notes: z.string().min(1, "Rejection reason is required"),
     }),
   )
@@ -379,7 +367,7 @@ export const deleteExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      expenseId: z.uuid("Invalid expense ID"),
+      expenseId: z.number().int().positive("Invalid expense ID"),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -436,7 +424,7 @@ export const linkExpenseToProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      expenseId: z.uuid("Invalid expense ID"),
+      expenseId: z.number().int().positive("Invalid expense ID"),
       projectId: z.uuid("Invalid project ID"),
     }),
   )
@@ -459,7 +447,7 @@ export const unlinkExpenseFromProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      expenseId: z.uuid("Invalid expense ID"),
+      expenseId: z.number().int().positive("Invalid expense ID"),
     }),
   )
   .handler(async ({ data }) => {

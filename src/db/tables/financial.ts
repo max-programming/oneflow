@@ -4,6 +4,7 @@ import {
   decimal,
   pgEnum,
   pgTable,
+  serial,
   text,
   timestamp,
   uuid,
@@ -57,7 +58,7 @@ export const expenseApprovalStatusEnum = pgEnum("expense_approval_status", [
 
 // Vendors Table
 export const vendors = pgTable("vendors", {
-  id: uuid().primaryKey().defaultRandom(),
+  id: serial().primaryKey(),
   name: text().notNull(),
   email: text().notNull().unique(),
   phone: text().notNull(),
@@ -73,8 +74,8 @@ export const vendors = pgTable("vendors", {
 
 // Sales Orders Table
 export const salesOrders = pgTable("sales_orders", {
-  id: uuid().primaryKey().defaultRandom(),
-  orderNumber: text().notNull().unique(), // Auto-generated: SO-001, SO-002, etc.
+  id: serial().primaryKey(),
+  orderNumber: text().notNull().unique(), // Auto-generated: SO-{id}
   projectId: uuid().references(() => projects.id),
   customerId: uuid()
     .notNull()
@@ -107,10 +108,10 @@ export const salesOrders = pgTable("sales_orders", {
 
 // Purchase Orders Table
 export const purchaseOrders = pgTable("purchase_orders", {
-  id: uuid().primaryKey().defaultRandom(),
-  poNumber: text().notNull().unique(), // Auto-generated: PO-001, PO-002, etc.
+  id: serial().primaryKey(),
+  poNumber: text().notNull().unique(), // Auto-generated: PO-{id}
   projectId: uuid().references(() => projects.id),
-  vendorId: uuid()
+  vendorId: serial()
     .notNull()
     .references(() => vendors.id),
   description: text(),
@@ -134,13 +135,13 @@ export const purchaseOrders = pgTable("purchase_orders", {
 
 // Customer Invoices Table
 export const customerInvoices = pgTable("customer_invoices", {
-  id: uuid().primaryKey().defaultRandom(),
-  invoiceNumber: text().notNull().unique(), // Auto-generated: INV-001, INV-002, etc.
+  id: serial().primaryKey(),
+  invoiceNumber: text().notNull().unique(), // Auto-generated: INV-{id}
   projectId: uuid().references(() => projects.id),
   customerId: uuid()
     .notNull()
     .references(() => customers.id),
-  salesOrderId: uuid().references(() => salesOrders.id), // Optional link to SO
+  salesOrderId: serial().references(() => salesOrders.id), // Optional link to SO
   description: text(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 })
@@ -167,13 +168,13 @@ export const customerInvoices = pgTable("customer_invoices", {
 
 // Vendor Bills Table
 export const vendorBills = pgTable("vendor_bills", {
-  id: uuid().primaryKey().defaultRandom(),
-  billNumber: text().notNull().unique(), // Auto-generated: BILL-001, BILL-002, etc.
+  id: serial().primaryKey(),
+  billNumber: text().notNull().unique(), // Auto-generated: BILL-{id}
   projectId: uuid().references(() => projects.id),
-  vendorId: uuid()
+  vendorId: serial()
     .notNull()
     .references(() => vendors.id),
-  purchaseOrderId: uuid().references(() => purchaseOrders.id), // Optional link to PO
+  purchaseOrderId: serial().references(() => purchaseOrders.id), // Optional link to PO
   description: text(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 })
@@ -200,8 +201,8 @@ export const vendorBills = pgTable("vendor_bills", {
 
 // Expenses Table
 export const expenses = pgTable("expenses", {
-  id: uuid().primaryKey().defaultRandom(),
-  expenseNumber: text().notNull().unique(), // Auto-generated: EXP-001, EXP-002, etc.
+  id: serial().primaryKey(),
+  expenseNumber: text().notNull().unique(), // Auto-generated: EXP-{id}
   projectId: uuid().references(() => projects.id),
   userId: uuid()
     .notNull()

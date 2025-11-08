@@ -468,7 +468,7 @@ function ExpenseDeleteDialog({ expense }: ExpenseDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (expenseId: string) =>
+    mutationFn: (expenseId: number) =>
       deleteExpenseFn({ data: { expenseId } }),
     onSuccess: () => {
       toast.success("Expense deleted successfully");

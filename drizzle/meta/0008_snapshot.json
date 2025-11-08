@@ -1,5 +1,5 @@
 {
-  "id": "72efe5f5-2457-4941-ae2d-620715ff6418",
+  "id": "78e13d4f-6b96-4d05-8894-0a2dd8927cd5",
   "prevId": "bd82ba56-b2c9-4d7b-bd69-c0b52648cde8",
   "version": "7",
   "dialect": "postgresql",
@@ -746,10 +746,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "invoice_number": {
           "name": "invoice_number",
@@ -771,9 +770,9 @@
         },
         "sales_order_id": {
           "name": "sales_order_id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "description": {
           "name": "description",
@@ -937,10 +936,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "expense_number": {
           "name": "expense_number",
@@ -1113,10 +1111,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "po_number": {
           "name": "po_number",
@@ -1132,7 +1129,7 @@
         },
         "vendor_id": {
           "name": "vendor_id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": false,
           "notNull": true
         },
@@ -1264,10 +1261,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "order_number": {
           "name": "order_number",
@@ -1415,10 +1411,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "bill_number": {
           "name": "bill_number",
@@ -1434,15 +1429,15 @@
         },
         "vendor_id": {
           "name": "vendor_id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": false,
           "notNull": true
         },
         "purchase_order_id": {
           "name": "purchase_order_id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "description": {
           "name": "description",
@@ -1606,10 +1601,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "name": {
           "name": "name",
