@@ -9,7 +9,7 @@ if (!DATABASE_URL) {
 }
 
 export default defineConfig({
-  out: "./drizzle",
+  out: "./drizzle_new",
   schema: "./src/db/schema.ts",
   dialect: "postgresql",
   casing: "snake_case",

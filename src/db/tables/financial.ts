@@ -2,12 +2,12 @@ import {
   boolean,
   date,
   decimal,
+  integer,
   pgEnum,
   pgTable,
   serial,
   text,
   timestamp,
-  uuid,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { customers, projects } from "./projects";
@@ -49,8 +49,8 @@ export const vendors = pgTable("vendors", {
 export const salesOrders = pgTable("sales_orders", {
   id: serial().primaryKey(),
   orderNumber: text().notNull().unique(), // Auto-generated: SO-{id}
-  projectId: uuid().references(() => projects.id),
-  customerId: uuid()
+  projectId: integer().references(() => projects.id),
+  customerId: integer()
     .notNull()
     .references(() => customers.id),
   description: text(),
@@ -60,7 +60,7 @@ export const salesOrders = pgTable("sales_orders", {
     .default("0"), // Tax percentage (e.g., 18.00 for 18%)
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(), // amount + tax
   orderDate: date().notNull(),
-  createdBy: uuid()
+  createdBy: integer()
     .notNull()
     .references(() => users.id),
   createdAt: timestamp().notNull().defaultNow(),
@@ -82,8 +82,8 @@ export const salesOrders = pgTable("sales_orders", {
 export const purchaseOrders = pgTable("purchase_orders", {
   id: serial().primaryKey(),
   poNumber: text().notNull().unique(), // Auto-generated: PO-{id}
-  projectId: uuid().references(() => projects.id),
-  vendorId: serial()
+  projectId: integer().references(() => projects.id),
+  vendorId: integer()
     .notNull()
     .references(() => vendors.id),
   description: text(),
@@ -93,7 +93,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
     .default("0"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   orderDate: date().notNull(),
-  createdBy: uuid()
+  createdBy: integer()
     .notNull()
     .references(() => users.id),
   createdAt: timestamp().notNull().defaultNow(),
@@ -108,11 +108,11 @@ export const purchaseOrders = pgTable("purchase_orders", {
 export const customerInvoices = pgTable("customer_invoices", {
   id: serial().primaryKey(),
   invoiceNumber: text().notNull().unique(), // Auto-generated: INV-{id}
-  projectId: uuid().references(() => projects.id),
-  customerId: uuid()
+  projectId: integer().references(() => projects.id),
+  customerId: integer()
     .notNull()
     .references(() => customers.id),
-  salesOrderId: serial().references(() => salesOrders.id), // Optional link to SO
+  salesOrderId: integer().references(() => salesOrders.id), // Optional link to SO
   description: text(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 })
@@ -122,7 +122,7 @@ export const customerInvoices = pgTable("customer_invoices", {
   invoiceDate: date().notNull(),
   dueDate: date().notNull(),
   status: invoiceStatusEnum().notNull().default("draft"),
-  createdBy: uuid()
+  createdBy: integer()
     .notNull()
     .references(() => users.id),
   createdAt: timestamp().notNull().defaultNow(),
@@ -137,11 +137,11 @@ export const customerInvoices = pgTable("customer_invoices", {
 export const vendorBills = pgTable("vendor_bills", {
   id: serial().primaryKey(),
   billNumber: text().notNull().unique(), // Auto-generated: BILL-{id}
-  projectId: uuid().references(() => projects.id),
-  vendorId: serial()
+  projectId: integer().references(() => projects.id),
+  vendorId: integer()
     .notNull()
     .references(() => vendors.id),
-  purchaseOrderId: serial().references(() => purchaseOrders.id), // Optional link to PO
+  purchaseOrderId: integer().references(() => purchaseOrders.id), // Optional link to PO
   description: text(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 })
@@ -151,7 +151,7 @@ export const vendorBills = pgTable("vendor_bills", {
   billDate: date().notNull(),
   dueDate: date().notNull(),
   status: invoiceStatusEnum().notNull().default("draft"),
-  createdBy: uuid()
+  createdBy: integer()
     .notNull()
     .references(() => users.id),
   createdAt: timestamp().notNull().defaultNow(),
@@ -166,8 +166,8 @@ export const vendorBills = pgTable("vendor_bills", {
 export const expenses = pgTable("expenses", {
   id: serial().primaryKey(),
   expenseNumber: text().notNull().unique(), // Auto-generated: EXP-{id}
-  projectId: uuid().references(() => projects.id),
-  userId: uuid()
+  projectId: integer().references(() => projects.id),
+  userId: integer()
     .notNull()
     .references(() => users.id), // Who submitted the expense
   description: text().notNull(),
@@ -180,7 +180,7 @@ export const expenses = pgTable("expenses", {
   expenseDate: date().notNull(),
   billable: boolean().notNull().default(false), // Can be charged to customer
   approvalStatus: expenseApprovalStatusEnum().notNull().default("pending"),
-  approvedBy: uuid().references(() => users.id), // Project Manager who approved
+  approvedBy: integer().references(() => users.id), // Project Manager who approved
   approvedAt: timestamp(),
   notes: text(), // Approval notes or rejection reason
   invoiceId: serial().references(() => customerInvoices.id), // Auto-created invoice for billable expenses

@@ -1,19 +1,29 @@
-import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  pgEnum,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
-export type UserRole =
-  | "admin"
-  | "project-manager"
-  | "team-member"
-  | "sales-finance";
+export const userRoleEnum = pgEnum("user_role", [
+  "admin",
+  "project-manager",
+  "team-member",
+  "sales-finance",
+]);
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
 
 export const users = pgTable("users", {
-  id: uuid().primaryKey().defaultRandom(),
+  id: serial().primaryKey(),
   name: text().notNull(),
   email: text().notNull().unique(),
   emailVerified: boolean().notNull().default(false),
   username: text().notNull().unique(),
   image: text(),
-  role: text().notNull().$type<UserRole>().default("team-member"),
+  role: userRoleEnum().notNull().default("team-member"),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp()
     .notNull()
@@ -23,8 +33,8 @@ export const users = pgTable("users", {
 });
 
 export const sessions = pgTable("sessions", {
-  id: uuid().primaryKey().defaultRandom(),
-  userId: uuid()
+  id: serial().primaryKey(),
+  userId: integer()
     .notNull()
     .references(() => users.id),
   token: text().notNull(),
@@ -37,8 +47,8 @@ export const sessions = pgTable("sessions", {
 });
 
 export const accounts = pgTable("accounts", {
-  id: uuid().primaryKey().defaultRandom(),
-  userId: uuid()
+  id: serial().primaryKey(),
+  userId: integer()
     .notNull()
     .references(() => users.id),
   password: text().notNull(),
@@ -50,7 +60,7 @@ export const accounts = pgTable("accounts", {
 });
 
 export const verifications = pgTable("verifications", {
-  id: uuid().primaryKey().defaultRandom(),
+  id: serial().primaryKey(),
   identifier: text().notNull(),
   value: text().notNull(),
   expiresAt: timestamp().notNull(),
