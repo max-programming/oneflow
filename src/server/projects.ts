@@ -1012,9 +1012,12 @@ export const getAdminFilteredProjectsFn = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data, context }) => {
-    // Verify user is admin
-    if (context.user.role !== "admin") {
-      throw new Error("Unauthorized: Admin access required");
+    // Verify user is admin or sales-finance
+    if (
+      context.user.role !== "admin" &&
+      context.user.role !== "sales-finance"
+    ) {
+      throw new Error("Unauthorized: Admin or Sales-Finance access required");
     }
 
     const { page, limit, filter } = data;

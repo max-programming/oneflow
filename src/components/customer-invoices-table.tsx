@@ -219,7 +219,8 @@ function CustomerInvoiceCreateDialog() {
               <SelectContent>
                 {salesOrders?.map((so) => (
                   <SelectItem key={so.id} value={so.id}>
-                    {so.orderNumber} - ₹{parseFloat(so.totalAmount).toLocaleString()}
+                    {so.orderNumber} - ₹
+                    {parseFloat(so.totalAmount).toLocaleString()}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -544,7 +545,15 @@ export function CustomerInvoicesTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Customer Invoices
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Manage and track all customer invoices
+          </p>
+        </div>
         <CustomerInvoiceCreateDialog />
       </div>
       <div className="rounded-md border">

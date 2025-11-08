@@ -36,7 +36,7 @@ const filterLabels: Record<FilterType, string> = {
 };
 
 interface ProjectsWithFilterProps {
-  userRole?: "project-manager" | "team-member" | "admin";
+  userRole?: "project-manager" | "team-member" | "admin" | "sales-finance";
 }
 
 export function ProjectsWithFilter({
@@ -50,7 +50,7 @@ export function ProjectsWithFilter({
     queryKey: [
       userRole === "team-member"
         ? "tm-filtered-projects"
-        : userRole === "admin"
+        : userRole === "admin" || userRole === "sales-finance"
           ? "admin-filtered-projects"
           : "filtered-projects",
       currentPage,
@@ -65,7 +65,7 @@ export function ProjectsWithFilter({
             filter,
           },
         });
-      } else if (userRole === "admin") {
+      } else if (userRole === "admin" || userRole === "sales-finance") {
         return getAdminFilteredProjectsFn({
           data: {
             page: currentPage,

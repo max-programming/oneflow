@@ -4,6 +4,11 @@ import { TodaysTasks } from "@/components/todays-tasks";
 import { ProjectsWithFilter } from "@/components/projects-with-filter";
 import { TasksOverview } from "@/components/tasks-overview";
 import { DashboardFinancialSummary } from "@/components/dashboard-financial-summary";
+import { SalesFinanceStatsCards } from "@/components/sales-finance-stats-cards";
+import { SalesFinanceRevenueChart } from "@/components/sales-finance-revenue-chart";
+import { SalesFinanceInvoiceChart } from "@/components/sales-finance-invoice-chart";
+import { SalesFinanceCustomerList } from "@/components/sales-finance-customer-list";
+import { CustomerInvoicesTable } from "@/components/customer-invoices-table";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -16,6 +21,7 @@ import {
   getTeamMemberTodaysTasksFn,
   getAdminTodaysTasksFn,
 } from "@/server/tasks";
+import { getSalesFinanceDashboardFn } from "@/server/sales-finance-dashboard";
 
 export const Route = createFileRoute("/dashboard/")({
   component: RouteComponent,
@@ -27,6 +33,7 @@ function RouteComponent() {
   const isProjectManager = session?.user?.role === "project-manager";
   const isAdmin = session?.user?.role === "admin";
   const isTeamMember = session?.user?.role === "team-member";
+  const isSalesFinance = session?.user?.role === "sales-finance";
 
   // Project Manager Dashboard Data
   const {
@@ -90,6 +97,81 @@ function RouteComponent() {
     queryFn: () => getAdminTodaysTasksFn(),
     enabled: isAdmin,
   });
+
+  // Sales & Finance Dashboard Data
+  const {
+    data: sfDashboardData,
+    isLoading: isSFDashboardLoading,
+    error: sfDashboardError,
+  } = useQuery({
+    queryKey: ["sf-dashboard"],
+    queryFn: () => getSalesFinanceDashboardFn(),
+    enabled: isSalesFinance,
+  });
+
+  // Sales & Finance Dashboard
+  if (isSalesFinance) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <div className="@container/main flex flex-1 flex-col gap-2">
+          <div className="flex flex-col gap-8 py-4 md:gap-10 md:py-6">
+            {/* Header */}
+            <div className="px-4 lg:px-6">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Sales & Finance Dashboard
+              </h1>
+              <p className="text-muted-foreground">
+                Overview of revenue, invoices, sales orders, and customers
+              </p>
+            </div>
+
+            {/* Statistics Cards */}
+            <div className="px-4 lg:px-6">
+              <SalesFinanceStatsCards
+                statistics={sfDashboardData}
+                isLoading={isSFDashboardLoading}
+              />
+            </div>
+
+            {/* Revenue Chart */}
+            <div className="px-4 lg:px-6">
+              <SalesFinanceRevenueChart />
+            </div>
+
+            {/* Invoice Payment Status & Top Customers */}
+            <div className="grid grid-cols-1 gap-4 px-4 lg:grid-cols-2 lg:px-6">
+              <SalesFinanceInvoiceChart />
+              <SalesFinanceCustomerList />
+            </div>
+
+            {/* Customer Invoices Table */}
+            <div className="px-4 lg:px-6">
+              <div className="space-y-4">
+                <CustomerInvoicesTable />
+              </div>
+            </div>
+
+            {/* Projects Section with Filter */}
+            <div className="px-4 lg:px-6">
+              <div className="space-y-4">
+                <ProjectsWithFilter userRole="sales-finance" />
+              </div>
+            </div>
+
+            {/* Error States */}
+            {sfDashboardError && (
+              <div className="px-4 lg:px-6">
+                <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
+                  <p className="font-semibold">Error loading dashboard data</p>
+                  <p className="text-sm">{sfDashboardError?.message}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Admin Dashboard
   if (isAdmin) {
