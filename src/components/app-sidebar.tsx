@@ -97,7 +97,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenu>
                 {data.navAdmin.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild tooltip={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      isActive={routerState.location.pathname === item.url}
+                    >
                       <Link to={item.url}>
                         {item.icon && <item.icon />}
                         <span>{item.title}</span>
