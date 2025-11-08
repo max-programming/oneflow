@@ -1,9 +1,11 @@
 import { KanbanCard } from "@/components/kibo-ui/kanban";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, Clock, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock, User, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskStatusEnum } from "@/db/tables/projects";
+import { TaskDetailsDialog } from "./task-details-dialog";
 
 // Define base kanban item interface (compatible with KanbanItemProps)
 interface KanbanItemBase extends Record<string, unknown> {
@@ -37,12 +39,12 @@ export function TaskCard({
   isHighlighted = false,
   className,
 }: TaskCardProps) {
-  const formatDate = (dateString: string) => {
+  function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
     });
-  };
+  }
 
   const getStatusColor = (status: TaskStatusEnum) => {
     switch (status) {
@@ -78,108 +80,121 @@ export function TaskCard({
     new Date(task.dueDate) < new Date() && task.status !== "done";
 
   return (
-    <KanbanCard
-      id={task.id}
-      name={task.name}
-      column={task.column}
-      className={cn(
-        "transition-all duration-300",
-        isHighlighted && "ring-2 ring-primary ring-offset-2 shadow-lg",
-        className,
-      )}
-    >
-      <div className="space-y-3">
-        {/* Header with title and status */}
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <h4 className="font-medium text-sm line-clamp-2 leading-tight">
-              {task.name}
-            </h4>
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-xs font-medium shrink-0",
-                getStatusColor(task.status),
-              )}
-            >
-              {getStatusLabel(task.status)}
-            </Badge>
+    <div className="relative">
+      <TaskDetailsDialog taskId={task.id} taskName={task.name}>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 p-0 hover:bg-primary/10 absolute right-3 bottom-3"
+        >
+          <Eye />
+        </Button>
+      </TaskDetailsDialog>
+      <KanbanCard
+        id={task.id}
+        name={task.name}
+        column={task.column}
+        className={cn(
+          "transition-all duration-300",
+          isHighlighted && "ring-2 ring-primary ring-offset-2 shadow-lg",
+          className,
+        )}
+      >
+        <div className="space-y-3">
+          {/* Header with title and status */}
+          <div className="space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-medium text-sm line-clamp-2 leading-tight flex-1">
+                {task.name}
+              </h4>
+              <div className="flex items-center gap-1 shrink-0">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs font-medium",
+                    getStatusColor(task.status),
+                  )}
+                >
+                  {getStatusLabel(task.status)}
+                </Badge>
+              </div>
+            </div>
+
+            {task.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {task.description}
+              </p>
+            )}
           </div>
 
-          {task.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {task.description}
-            </p>
-          )}
-        </div>
-
-        {/* Dates */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            <span>Start: {formatDate(task.startDate)}</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs">
-            <Clock className="h-3 w-3" />
-            <span
-              className={cn(
-                isOverdue
-                  ? "text-red-600 font-medium"
-                  : "text-muted-foreground",
-              )}
-            >
-              Due: {formatDate(task.dueDate)}
-              {isOverdue && " (Overdue)"}
-            </span>
-          </div>
-        </div>
-
-        {/* Assignees */}
-        {task.assignees.length > 0 && (
+          {/* Dates */}
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <User className="h-3 w-3" />
-              <span>Assignees:</span>
+              <Calendar className="h-3 w-3" />
+              <span>Start: {formatDate(task.startDate)}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="flex -space-x-1">
-                {task.assignees.slice(0, 3).map((assignee) => (
-                  <Avatar
-                    key={assignee.userId}
-                    className="h-6 w-6 border-2 border-background"
-                  >
-                    <AvatarFallback className="text-xs bg-muted">
-                      {assignee.userName
-                        ? assignee.userName
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase()
-                        : assignee.userEmail
-                            ?.split("@")[0]
-                            ?.slice(0, 2)
-                            .toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-                {task.assignees.length > 3 && (
-                  <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      +{task.assignees.length - 3}
-                    </span>
-                  </div>
+            <div className="flex items-center gap-1 text-xs">
+              <Clock className="h-3 w-3" />
+              <span
+                className={cn(
+                  isOverdue
+                    ? "text-red-600 font-medium"
+                    : "text-muted-foreground",
                 )}
-              </div>
-              <div className="ml-2 text-xs text-muted-foreground">
-                {task.assignees.length === 1
-                  ? "1 person"
-                  : `${task.assignees.length} people`}
-              </div>
+              >
+                Due: {formatDate(task.dueDate)}
+                {isOverdue && " (Overdue)"}
+              </span>
             </div>
           </div>
-        )}
-      </div>
-    </KanbanCard>
+
+          {/* Assignees */}
+          {task.assignees.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <User className="h-3 w-3" />
+                <span>Assignees:</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="flex -space-x-1">
+                  {task.assignees.slice(0, 3).map((assignee) => (
+                    <Avatar
+                      key={assignee.userId}
+                      className="h-6 w-6 border-2 border-background"
+                    >
+                      <AvatarFallback className="text-xs bg-muted">
+                        {assignee.userName
+                          ? assignee.userName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()
+                          : assignee.userEmail
+                              ?.split("@")[0]
+                              ?.slice(0, 2)
+                              .toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {task.assignees.length > 3 && (
+                    <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        +{task.assignees.length - 3}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="ml-2 text-xs text-muted-foreground">
+                  {task.assignees.length === 1
+                    ? "1 person"
+                    : `${task.assignees.length} people`}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </KanbanCard>
+    </div>
   );
 }
