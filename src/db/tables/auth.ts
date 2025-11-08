@@ -1,5 +1,11 @@
 import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
+export type UserRole =
+  | "admin"
+  | "project-manager"
+  | "team-member"
+  | "sales-finance";
+
 export const users = pgTable("users", {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
@@ -7,6 +13,7 @@ export const users = pgTable("users", {
   emailVerified: boolean().notNull().default(false),
   username: text().notNull().unique(),
   image: text(),
+  role: text().notNull().$type<UserRole>().default("team-member"),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp()
     .notNull()

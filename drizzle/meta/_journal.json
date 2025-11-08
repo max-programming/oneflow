@@ -8,6 +8,13 @@
       "when": 1762515043808,
       "tag": "0000_tough_chronomancer",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1762578090073,
+      "tag": "0001_dusty_dagger",
+      "breakpoints": true
     }
   ]
 }
