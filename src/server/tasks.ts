@@ -3,10 +3,11 @@ import { UserRole, users } from "@/db/schema";
 import {
   projectTaskAssignees,
   projectTasks,
+  projectTaskTimesheets,
   projects,
 } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -495,6 +496,102 @@ export const getTaskAssigneesFn = createServerFn({ method: "GET" })
       .where(eq(projectTaskAssignees.taskId, data.taskId));
 
     return assignees;
+  });
+
+// Get Project Total Logged Hours - All authenticated users can view
+export const getProjectTotalLoggedHoursFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.uuid("Invalid project ID"),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const timesheets = await db
+      .select({
+        startTime: projectTaskTimesheets.startTime,
+        endTime: projectTaskTimesheets.endTime,
+      })
+      .from(projectTaskTimesheets)
+      .where(eq(projectTaskTimesheets.projectId, data.projectId));
+
+    // Calculate total hours
+    const totalMinutes = timesheets.reduce((total, timesheet) => {
+      const start = new Date(timesheet.startTime);
+      const end = new Date(timesheet.endTime);
+      const minutes = (end.getTime() - start.getTime()) / (1000 * 60);
+      return total + minutes;
+    }, 0);
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.floor(totalMinutes % 60);
+
+    return {
+      totalHours: hours,
+      totalMinutes: minutes,
+      formatted: `${hours}:${minutes.toString().padStart(2, "0")}`,
+    };
+  });
+
+// Get Project Weekly Logged Hours - All authenticated users can view
+export const getProjectWeeklyLoggedHoursFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.uuid("Invalid project ID"),
+    }),
+  )
+  .handler(async ({ data }) => {
+    // Get timesheets for the last 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const timesheets = await db
+      .select({
+        startTime: projectTaskTimesheets.startTime,
+        endTime: projectTaskTimesheets.endTime,
+      })
+      .from(projectTaskTimesheets)
+      .where(
+        and(
+          eq(projectTaskTimesheets.projectId, data.projectId),
+          sql`${projectTaskTimesheets.startTime} >= ${sevenDaysAgo}`,
+        ),
+      );
+
+    // Group by day of week and calculate hours
+    const dayNames = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    const hoursByDay: Record<string, number> = {
+      Monday: 0,
+      Tuesday: 0,
+      Wednesday: 0,
+      Thursday: 0,
+      Friday: 0,
+      Saturday: 0,
+      Sunday: 0,
+    };
+
+    timesheets.forEach((timesheet) => {
+      const start = new Date(timesheet.startTime);
+      const end = new Date(timesheet.endTime);
+      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      const dayName = dayNames[start.getDay()];
+      hoursByDay[dayName] += hours;
+    });
+
+    return Object.entries(hoursByDay).map(([day, hours]) => ({
+      day,
+      hours: Math.round(hours * 10) / 10, // Round to 1 decimal place
+    }));
   });
 
 async function verifyProjectManager(

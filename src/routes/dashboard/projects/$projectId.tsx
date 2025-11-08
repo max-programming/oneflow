@@ -6,6 +6,10 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectByIdFn } from "@/server/projects";
+import {
+  getProjectTotalLoggedHoursFn,
+  getProjectWeeklyLoggedHoursFn,
+} from "@/server/tasks";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Calendar, Clock, Tag, Target, User } from "lucide-react";
@@ -187,6 +191,18 @@ function RouteComponent() {
     queryFn: () => getProjectByIdFn({ data: { projectId } }),
   });
 
+  const { data: totalLoggedHours } = useQuery({
+    queryKey: ["project-total-hours", projectId],
+    queryFn: () => getProjectTotalLoggedHoursFn({ data: { projectId } }),
+    enabled: !!projectId,
+  });
+
+  const { data: weeklyHours } = useQuery({
+    queryKey: ["project-weekly-hours", projectId],
+    queryFn: () => getProjectWeeklyLoggedHoursFn({ data: { projectId } }),
+    enabled: !!projectId,
+  });
+
   if (isLoading) {
     return <ProjectDetailsSkeleton />;
   }
@@ -234,29 +250,29 @@ function RouteComponent() {
   // Add these to the backend API and remove dummy data when available
   const dummyEnhancements = {
     progress: 93.65, // TODO: Calculate from project tasks completion
-    totalLoggedHours: "5153:07", // TODO: Add time tracking system
     openTasks: 23, // TODO: Count from projectTasks table
     totalTasks: 362, // TODO: Count from projectTasks table
     totalDays: 407, // TODO: Calculate from start date and deadline
-
-    // weeklyHours: [
-    //   { day: "Monday", hours: 8.5 },
-    //   { day: "Tuesday", hours: 7.2 },
-    //   { day: "Wednesday", hours: 9.1 },
-    //   { day: "Thursday", hours: 8.7 },
-    //   { day: "Friday", hours: 6.8 },
-    //   { day: "Saturday", hours: 0 },
-    //   { day: "Sunday", hours: 0 },
-    // ],
   };
 
-  // Merge API data with dummy enhancements
+  // Merge API data with dummy enhancements and dynamic timesheet data
   const projectData = {
     ...project,
     daysLeft: project.deadlineDate
       ? new Date(project.deadlineDate).getTime() - new Date().getTime()
       : 0,
     ...dummyEnhancements,
+    // Dynamic timesheet data
+    totalLoggedHours: totalLoggedHours?.formatted || "0:00",
+    weeklyHours: weeklyHours || [
+      { day: "Monday", hours: 0 },
+      { day: "Tuesday", hours: 0 },
+      { day: "Wednesday", hours: 0 },
+      { day: "Thursday", hours: 0 },
+      { day: "Friday", hours: 0 },
+      { day: "Saturday", hours: 0 },
+      { day: "Sunday", hours: 0 },
+    ],
     // Override customer with API data where available
     customer: {
       name: project.customerName,
@@ -483,6 +499,55 @@ function RouteComponent() {
                           }
                           className="h-2"
                         />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Weekly Hours Chart */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Clock className="h-4 w-4" />
+                          Total Logged Hours
+                        </CardTitle>
+                        <Button variant="ghost" size="sm" className="text-xs">
+                          This Week
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-xs">
+                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                          <span>Logged Hours</span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {projectData.weeklyHours.map((day) => (
+                            <div
+                              key={day.day}
+                              className="flex items-center gap-2"
+                            >
+                              <div className="text-xs text-muted-foreground min-w-16 text-right">
+                                {day.hours.toFixed(1)}h
+                              </div>
+                              <div className="flex-1">
+                                <div className="h-8 bg-muted rounded-sm overflow-hidden">
+                                  <div
+                                    className="h-full bg-blue-500 transition-all duration-300"
+                                    style={{
+                                      width: `${(day.hours / 10) * 100}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div className="text-xs text-muted-foreground min-w-16">
+                                {day.day.slice(0, 3)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
