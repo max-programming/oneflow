@@ -71,8 +71,6 @@ function CustomerTableRowSkeleton() {
   );
 }
 
-interface CustomerCreateDialogProps {}
-
 function CustomerCreateDialog() {
   const [open, setOpen] = React.useState(false);
   const [formData, setFormData] = React.useState({
