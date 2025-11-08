@@ -32,6 +32,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createProjectTaskFn, getNonAdminUsersFn } from "@/server/tasks";
+import { getProjectByIdFn } from "@/server/projects";
 
 interface NewTaskDialogProps {
   open: boolean;
@@ -58,6 +59,12 @@ export function NewTaskDialog({
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+
+  // Fetch project details to get the deadline
+  const { data: projectData } = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => getProjectByIdFn({ data: { projectId } }),
+  });
 
   // Fetch non-admin users for assignee selection
   const { data: usersData } = useQuery({
@@ -101,7 +108,7 @@ export function NewTaskDialog({
     setSelectedAssignees((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+        : [...prev, userId],
     );
   }
 
@@ -129,6 +136,14 @@ export function NewTaskDialog({
       toast.error("Due date must be after start date");
       return;
     }
+    if (projectData?.deadlineDate) {
+      const projectDeadline = new Date(projectData.deadlineDate);
+      projectDeadline.setHours(23, 59, 59, 999);
+      if (dueDate > projectDeadline) {
+        toast.error("Due date cannot be after project deadline");
+        return;
+      }
+    }
 
     // Format dates as YYYY-MM-DD strings
     const formattedStartDate = startDate.toISOString().split("T")[0];
@@ -147,7 +162,7 @@ export function NewTaskDialog({
   }
 
   const selectedUsers = userOptions.filter((user) =>
-    selectedAssignees.includes(user.value)
+    selectedAssignees.includes(user.value),
   );
 
   return (
@@ -233,6 +248,24 @@ export function NewTaskDialog({
                       setStartDate(date);
                       setStartDateOpen(false);
                     }}
+                    disabled={(date) => {
+                      // Disable dates before today
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      if (date < today) {
+                        return true;
+                      }
+
+                      // Disable dates after project deadline if it exists
+                      if (projectData?.deadlineDate) {
+                        const projectDeadline = new Date(
+                          projectData.deadlineDate,
+                        );
+                        projectDeadline.setHours(23, 59, 59, 999);
+                        return date > projectDeadline;
+                      }
+                      return false;
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -272,7 +305,29 @@ export function NewTaskDialog({
                     mode="single"
                     selected={dueDate}
                     captionLayout="dropdown"
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => {
+                      // Disable dates before or equal to start date
+                      if (startDate) {
+                        const minDate = new Date(startDate);
+                        minDate.setHours(0, 0, 0, 0);
+                        if (date <= minDate) {
+                          return true;
+                        }
+                      }
+
+                      // Disable dates after project deadline
+                      if (projectData?.deadlineDate) {
+                        const projectDeadline = new Date(
+                          projectData.deadlineDate,
+                        );
+                        projectDeadline.setHours(23, 59, 59, 999);
+                        if (date > projectDeadline) {
+                          return true;
+                        }
+                      }
+
+                      return false;
+                    }}
                     onSelect={(date) => {
                       setDueDate(date);
                       setDueDateOpen(false);

@@ -233,6 +233,7 @@ export function TasksKanban({
                   key={task.id}
                   task={task as TaskData}
                   isHighlighted={highlightedTaskId === task.id}
+                  projectId={projectId}
                 />
               )}
             </KanbanCards>

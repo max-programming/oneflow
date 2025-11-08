@@ -32,12 +32,14 @@ interface TaskCardProps {
   task: TaskData;
   isHighlighted?: boolean;
   className?: string;
+  projectId?: string;
 }
 
 export function TaskCard({
   task,
   isHighlighted = false,
   className,
+  projectId,
 }: TaskCardProps) {
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -81,7 +83,11 @@ export function TaskCard({
 
   return (
     <div className="relative">
-      <TaskDetailsDialog taskId={task.id} taskName={task.name}>
+      <TaskDetailsDialog
+        taskId={task.id}
+        taskName={task.name}
+        projectId={projectId}
+      >
         <Button
           size="icon"
           variant="ghost"

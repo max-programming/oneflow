@@ -7,7 +7,7 @@ import {
   projectTaskTimesheets,
 } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, lt, not, sql } from "drizzle-orm";
 import { z } from "zod";
 import { allRoles, authMiddleware } from "./auth-middleware";
 
@@ -16,10 +16,10 @@ export const createTimesheetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
-      taskId: z.uuid("Invalid task ID"),
-      startTime: z.iso.datetime("Invalid ISO datetime string"),
-      endTime: z.iso.datetime("Invalid ISO datetime string"),
+      projectId: z.string().uuid("Invalid project ID"),
+      taskId: z.string().uuid("Invalid task ID"),
+      startTime: z.string().datetime("Invalid ISO datetime string"),
+      endTime: z.string().datetime("Invalid ISO datetime string"),
       notes: z.string().optional(),
     }),
   )
@@ -66,6 +66,32 @@ export const createTimesheetFn = createServerFn({ method: "POST" })
       throw new Error("End time must be after start time");
     }
 
+    // Check for overlapping time entries across ALL tasks for this user using SQL
+    // This prevents users from logging time on multiple tasks simultaneously
+    // Overlap occurs when: new start < existing end AND new end > existing start
+    const [overlapCheck] = await db
+      .select({
+        count: projectTaskTimesheets.id,
+        taskName: projectTasks.name,
+      })
+      .from(projectTaskTimesheets)
+      .leftJoin(projectTasks, eq(projectTaskTimesheets.taskId, projectTasks.id))
+      .where(
+        and(
+          eq(projectTaskTimesheets.userId, session.user.id),
+          // SQL overlap check using proper comparisons
+          lt(sql`${start.toISOString()}`, projectTaskTimesheets.endTime),
+          gt(sql`${end.toISOString()}`, projectTaskTimesheets.startTime),
+        ),
+      )
+      .limit(1);
+
+    if (overlapCheck && overlapCheck.count) {
+      throw new Error(
+        `This time entry overlaps with another entry${overlapCheck.taskName ? ` on task "${overlapCheck.taskName}"` : ""}. You cannot log time on multiple tasks simultaneously.`,
+      );
+    }
+
     const [timesheet] = await db
       .insert(projectTaskTimesheets)
       .values({
@@ -90,7 +116,7 @@ export const getTaskTimesheetsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
+      taskId: z.string().uuid("Invalid task ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -125,9 +151,9 @@ export const updateTimesheetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      timesheetId: z.uuid("Invalid timesheet ID"),
-      startTime: z.iso.datetime("Invalid ISO datetime string").optional(),
-      endTime: z.iso.datetime("Invalid ISO datetime string").optional(),
+      timesheetId: z.string().uuid("Invalid timesheet ID"),
+      startTime: z.string().datetime("Invalid ISO datetime string").optional(),
+      endTime: z.string().datetime("Invalid ISO datetime string").optional(),
       notes: z.string().optional(),
     }),
   )
@@ -182,6 +208,32 @@ export const updateTimesheetFn = createServerFn({ method: "POST" })
       throw new Error("End time must be after start time");
     }
 
+    // Check for overlapping time entries across ALL tasks using SQL
+    // Exclude the current timesheet being edited
+    // Overlap occurs when: new start < existing end AND new end > existing start
+    const [overlapCheck] = await db
+      .select({
+        count: projectTaskTimesheets.id,
+        taskName: projectTasks.name,
+      })
+      .from(projectTaskTimesheets)
+      .leftJoin(projectTasks, eq(projectTaskTimesheets.taskId, projectTasks.id))
+      .where(
+        and(
+          eq(projectTaskTimesheets.userId, session.user.id),
+          not(eq(projectTaskTimesheets.id, data.timesheetId)),
+          lt(sql`${finalStartTime.toISOString()}`, projectTaskTimesheets.endTime),
+          gt(sql`${finalEndTime.toISOString()}`, projectTaskTimesheets.startTime),
+        ),
+      )
+      .limit(1);
+
+    if (overlapCheck && overlapCheck.count) {
+      throw new Error(
+        `This time entry overlaps with another entry${overlapCheck.taskName ? ` on task "${overlapCheck.taskName}"` : ""}. You cannot log time on multiple tasks simultaneously.`,
+      );
+    }
+
     const [updatedTimesheet] = await db
       .update(projectTaskTimesheets)
       .set(updateData)
@@ -200,7 +252,7 @@ export const deleteTimesheetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      timesheetId: z.uuid("Invalid timesheet ID"),
+      timesheetId: z.string().uuid("Invalid timesheet ID"),
     }),
   )
   .handler(async ({ data, context }) => {
