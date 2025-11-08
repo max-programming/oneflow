@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { customers, projects } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -189,6 +189,87 @@ export const deleteProjectFn = createServerFn({ method: "POST" })
     }
 
     return { success: true, message: "Project deleted successfully" };
+  });
+
+export const getProjectsPaginatedFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      cursor: z.string().optional(),
+      limit: z.number().default(12),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { cursor, limit } = data;
+    
+    let query = db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        managerId: projects.managerId,
+        managerName: users.name,
+        managerEmail: users.email,
+        managerRole: users.role,
+        startDate: projects.startDate,
+        deadlineDate: projects.deadlineDate,
+        customerId: projects.customerId,
+        customerName: customers.name,
+        customerEmail: customers.email,
+        customerPhone: customers.phone,
+        tags: projects.tags,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+      })
+      .from(projects)
+      .leftJoin(customers, eq(projects.customerId, customers.id))
+      .leftJoin(users, eq(projects.managerId, users.id))
+      .$dynamic();
+      
+    if (cursor) {
+      const [cursorProject] = await db
+        .select({ 
+          createdAt: projects.createdAt,
+          id: projects.id 
+        })
+        .from(projects)
+        .where(eq(projects.id, cursor))
+        .limit(1);
+      
+      if (cursorProject && cursorProject.createdAt) {
+        query = query.where(
+          and(
+            isNull(projects.deletedAt),
+            or(
+              lt(projects.createdAt, cursorProject.createdAt),
+              and(
+                eq(projects.createdAt, cursorProject.createdAt),
+                lt(projects.id, cursorProject.id)
+              )
+            )
+          )
+        );
+      } else {
+        query = query.where(isNull(projects.deletedAt));
+      }
+    } else {
+      query = query.where(isNull(projects.deletedAt));
+    }
+    
+    const projectsData = await query
+      .orderBy(desc(projects.createdAt), desc(projects.id))
+      .limit(limit + 1);
+    
+    const hasNextPage = projectsData.length > limit;
+    const projectsToReturn = hasNextPage ? projectsData.slice(0, limit) : projectsData;
+    const nextCursor = hasNextPage ? projectsToReturn[projectsToReturn.length - 1]?.id : undefined;
+    
+    return {
+      projects: projectsToReturn,
+      nextCursor,
+      hasNextPage,
+    };
   });
 
 // Get All Project Managers - All authenticated users can view

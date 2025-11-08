@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
-import { useQuery } from "@tanstack/react-query";
-import { getProjectsFn } from "@/server/projects";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { getProjectsPaginatedFn } from "@/server/projects";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProjectCard, ProjectCardSkeleton } from "@/components/project-card";
 import {
@@ -11,7 +11,7 @@ import {
   ProjectsListTableSkeleton,
 } from "@/components/projects-list-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/projects/")({
   component: RouteComponent,
@@ -21,19 +21,46 @@ function RouteComponent() {
   const { session } = Route.useRouteContext();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const isAdminOrProjectManager =
     session?.user?.role === "admin" ||
     session?.user?.role === "project-manager";
 
   const {
-    data: projects,
+    data,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => getProjectsFn(),
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetching,
+  } = useInfiniteQuery({
+    queryKey: ["projects", "infinite"],
+    queryFn: ({ pageParam }) =>
+      getProjectsPaginatedFn({ data: { cursor: pageParam, limit: 12 } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
+
+  const projects = data?.pages.flatMap((page) => page.projects) ?? [];
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetching) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isFetching]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -116,6 +143,29 @@ function RouteComponent() {
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {projects.length > 0 && (
+            <div ref={loadMoreRef} className="flex justify-center py-4">
+              {isFetchingNextPage ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Loading more projects...</span>
+                </div>
+              ) : hasNextPage ? (
+                <Button
+                  variant="outline"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  Load More
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No more projects to load
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -31,7 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getProjectsFn } from "@/server/projects";
+import type { getProjectsFn } from "@/server/projects";
 import { Link } from "@tanstack/react-router";
 
 type Projects = Awaited<ReturnType<typeof getProjectsFn>>;
