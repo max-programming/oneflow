@@ -1,12 +1,8 @@
 import * as React from "react";
 import {
-  IconChartBar,
-  IconDashboard,
   IconFolder,
   IconInnerShadowTop,
-  IconListDetails,
   IconShield,
-  IconUsers,
   IconUserCog,
   IconAddressBook,
 } from "@tabler/icons-react";
@@ -30,29 +26,9 @@ import {
 const data = {
   navMain: [
     {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: IconDashboard,
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
       title: "Projects",
-      url: "#",
+      url: "/dashboard/projects",
       icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
     },
   ],
   navAdmin: [
