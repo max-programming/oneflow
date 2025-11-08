@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { customers, projects } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -180,4 +180,24 @@ export const deleteProjectFn = createServerFn({ method: "POST" })
     }
 
     return { success: true, message: "Project deleted successfully" };
+  });
+
+// Get All Project Managers - All authenticated users can view
+export const getProjectManagersFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .handler(async () => {
+    const projectManagers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(eq(users.role, "project-manager"))
+      .orderBy(users.createdAt);
+
+    return projectManagers;
   });

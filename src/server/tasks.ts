@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { projectTasks } from "@/db/tables/projects";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import {
   allRoles,
@@ -158,4 +158,24 @@ export const deleteProjectTaskFn = createServerFn({ method: "POST" })
     }
 
     return { success: true, message: "Task deleted successfully" };
+  });
+
+// Get All Users Except Admins - All authenticated users can view
+export const getNonAdminUsersFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .handler(async () => {
+    const nonAdminUsers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(ne(users.role, "admin"))
+      .orderBy(users.createdAt);
+
+    return nonAdminUsers;
   });
