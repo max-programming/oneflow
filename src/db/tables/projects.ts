@@ -16,6 +16,9 @@ export const projects = pgTable("projects", {
     .notNull()
     .$type<ProjectStatusEnum>()
     .default("waiting-to-start"),
+  managerId: uuid()
+    .notNull()
+    .references(() => users.id),
   startDate: date(),
   deadlineDate: date(),
   customerId: uuid()
@@ -51,21 +54,8 @@ export const projectTasks = pgTable("project_tasks", {
 export const customers = pgTable("customers", {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
-  createdAt: timestamp().notNull().defaultNow(),
-  updatedAt: timestamp()
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
-
-export const projectMembers = pgTable("project_members", {
-  id: uuid().primaryKey().defaultRandom(),
-  projectId: uuid()
-    .notNull()
-    .references(() => projects.id),
-  userId: uuid()
-    .notNull()
-    .references(() => users.id),
+  email: text().notNull().unique(),
+  phone: text().notNull().unique(),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp()
     .notNull()
