@@ -6,6 +6,13 @@ import {
   IconUserCog,
   IconAddressBook,
   IconHome,
+  IconSettings,
+  IconReceipt,
+  IconShoppingCart,
+  IconFileInvoice,
+  IconFileText,
+  IconCash,
+  IconBuilding,
 } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 
@@ -49,12 +56,46 @@ const data = {
       icon: IconAddressBook,
     },
   ],
+  navSettings: [
+    {
+      title: "Sales Orders",
+      url: "/dashboard/settings/sales-orders",
+      icon: IconShoppingCart,
+    },
+    {
+      title: "Purchase Orders",
+      url: "/dashboard/settings/purchase-orders",
+      icon: IconReceipt,
+    },
+    {
+      title: "Customer Invoices",
+      url: "/dashboard/settings/customer-invoices",
+      icon: IconFileInvoice,
+    },
+    {
+      title: "Vendor Bills",
+      url: "/dashboard/settings/vendor-bills",
+      icon: IconFileText,
+    },
+    {
+      title: "Expenses",
+      url: "/dashboard/settings/expenses",
+      icon: IconCash,
+    },
+    {
+      title: "Vendors",
+      url: "/dashboard/settings/vendors",
+      icon: IconBuilding,
+    },
+  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const routerState = useRouterState();
   const session = routerState.matches[0]?.context?.session;
   const isAdmin = session?.user?.role === "admin";
+  const isSalesFinance = session?.user?.role === "sales-finance";
+  const canAccessSettings = isAdmin || isSalesFinance;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -75,6 +116,32 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        {canAccessSettings && (
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              <IconSettings className="mr-2 h-4 w-4" />
+              Financial Settings
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {data.navSettings.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      isActive={routerState.location.pathname === item.url}
+                    >
+                      <Link to={item.url}>
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>

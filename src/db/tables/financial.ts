@@ -98,6 +98,13 @@ export const salesOrders = pgTable("sales_orders", {
   deletedAt: timestamp(),
 });
 
+// Purchase Order (PO) = what we asked the vendor to do/supply (a purchase commitment / promise, created by the buyer).
+
+// Vendor Bill = what the vendor actually billed us (a supplier invoice, used for accounting and payment).
+
+// PO = request/authorization.
+// Vendor Bill = financial/legal document to pay.
+
 // Purchase Orders Table
 export const purchaseOrders = pgTable("purchase_orders", {
   id: uuid().primaryKey().defaultRandom(),
