@@ -207,3 +207,51 @@ code {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar Styles */
+@layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.3);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(160, 160, 160, 0.5);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: rgba(180, 180, 180, 0.6);
+  }
+
+  /* Dark mode scrollbar - subtle and elegant */
+  .dark .custom-scrollbar {
+    scrollbar-color: rgba(100, 100, 100, 0.4) transparent;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(100, 100, 100, 0.4);
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(130, 130, 130, 0.6);
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: rgba(150, 150, 150, 0.7);
+  }
+}

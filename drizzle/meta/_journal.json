@@ -22,6 +22,20 @@
       "when": 1762582212421,
       "tag": "0002_loose_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1762585623430,
+      "tag": "0003_harsh_snowbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1762586273472,
+      "tag": "0004_medical_vance_astro",
+      "breakpoints": true
     }
   ]
 }
