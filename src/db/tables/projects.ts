@@ -1,4 +1,11 @@
-import { date, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  date,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export type ProjectStatusEnum =
@@ -7,6 +14,19 @@ export type ProjectStatusEnum =
   | "completed"
   | "cancelled"
   | "on-hold";
+
+export type TaskStatusEnum =
+  | "waiting-to-start"
+  | "in-progress"
+  | "stuck"
+  | "done";
+
+export const taskStatusEnum = pgEnum("task_status", [
+  "waiting-to-start",
+  "in-progress",
+  "stuck",
+  "done",
+]);
 
 export const projects = pgTable("projects", {
   id: uuid().primaryKey().defaultRandom(),
@@ -40,6 +60,7 @@ export const projectTasks = pgTable("project_tasks", {
     .references(() => projects.id),
   name: text().notNull(),
   description: text(),
+  status: taskStatusEnum().notNull().default("waiting-to-start"),
   startDate: date().notNull(),
   dueDate: date().notNull(),
   createdAt: timestamp().notNull().defaultNow(),

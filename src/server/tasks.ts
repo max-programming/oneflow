@@ -57,6 +57,7 @@ export const createProjectTaskFn = createServerFn({ method: "POST" })
         projectId: data.projectId,
         name: data.name,
         description: data.description,
+        status: "waiting-to-start", // Explicitly set default status
         startDate: data.startDate,
         dueDate: data.dueDate,
       })
@@ -92,6 +93,7 @@ export const getProjectTasksFn = createServerFn({ method: "GET" })
         projectId: projectTasks.projectId,
         name: projectTasks.name,
         description: projectTasks.description,
+        status: projectTasks.status,
         startDate: projectTasks.startDate,
         dueDate: projectTasks.dueDate,
         createdAt: projectTasks.createdAt,
@@ -168,6 +170,7 @@ export const getProjectTaskByIdFn = createServerFn({ method: "GET" })
         projectId: projectTasks.projectId,
         name: projectTasks.name,
         description: projectTasks.description,
+        status: projectTasks.status,
         startDate: projectTasks.startDate,
         dueDate: projectTasks.dueDate,
         createdAt: projectTasks.createdAt,
@@ -210,6 +213,9 @@ export const updateProjectTaskFn = createServerFn({ method: "POST" })
       description: z.string().optional(),
       startDate: z.string().optional(),
       dueDate: z.string().optional(),
+      status: z
+        .enum(["waiting-to-start", "in-progress", "stuck", "done"])
+        .optional(),
     }),
   )
   .handler(async ({ data, context }) => {

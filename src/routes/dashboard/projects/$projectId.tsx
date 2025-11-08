@@ -1,18 +1,21 @@
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, Clock, Target, Tag, Plus, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { getProjectByIdFn } from "@/server/projects";
+import { NewTaskDialog } from "@/components/tasks/new-task-dialog";
+import { TasksKanban } from "@/components/tasks/tasks-kanban";
+import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import {
   getProjectTotalLoggedHoursFn,
   getProjectWeeklyLoggedHoursFn,
 } from "@/server/tasks";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Calendar, Clock, Tag, Target, User } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/projects/$projectId")({
   component: RouteComponent,
@@ -181,6 +184,11 @@ function ProjectDetailsSkeleton() {
 
 function RouteComponent() {
   const { projectId } = Route.useParams();
+  const { session } = Route.useRouteContext();
+  const [newTaskDialogOpen, setNewTaskDialogOpen] = useState(false);
+  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(
+    null,
+  );
 
   const {
     data: project,
@@ -202,6 +210,19 @@ function RouteComponent() {
     queryFn: () => getProjectWeeklyLoggedHoursFn({ data: { projectId } }),
     enabled: !!projectId,
   });
+  // Check if user can manage tasks (project manager or admin)
+  const canManageTasks =
+    session?.user?.role === "admin" ||
+    (session?.user?.role === "project-manager" &&
+      session?.user?.id === project?.managerId);
+
+  const handleTaskCreated = (taskId: string) => {
+    setHighlightedTaskId(taskId);
+  };
+
+  const handleHighlightComplete = () => {
+    setHighlightedTaskId(null);
+  };
 
   if (isLoading) {
     return <ProjectDetailsSkeleton />;
@@ -300,7 +321,20 @@ function RouteComponent() {
               </div>
 
               <div className="flex gap-2">
-                <Button size="sm">+ New Task</Button>
+                {canManageTasks && (
+                  <NewTaskDialog
+                    open={newTaskDialogOpen}
+                    onOpenChange={setNewTaskDialogOpen}
+                    projectId={projectId}
+                    onTaskCreated={handleTaskCreated}
+                    triggerButton={
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Task
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </div>
 
@@ -555,15 +589,13 @@ function RouteComponent() {
               </div>
             </TabsContent>
 
-            {/* Placeholder for other tabs */}
-            <TabsContent value="tasks">
-              <Card>
-                <CardContent className="flex items-center justify-center h-64">
-                  <p className="text-muted-foreground">
-                    Tasks view coming soon...
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Tasks Tab */}
+            <TabsContent value="tasks" className="mt-6">
+              <TasksKanban
+                projectId={projectId}
+                highlightedTaskId={highlightedTaskId}
+                onHighlightComplete={handleHighlightComplete}
+              />
             </TabsContent>
 
             <TabsContent value="timesheets">

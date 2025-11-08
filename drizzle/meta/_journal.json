@@ -50,6 +50,13 @@
       "when": 1762602926946,
       "tag": "0006_cuddly_sir_ram",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1762605128307,
+      "tag": "0007_breezy_tattoo",
+      "breakpoints": true
     }
   ]
 }
