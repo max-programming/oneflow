@@ -31,6 +31,7 @@ export const getSessionFn = createServerFn({ method: "GET" }).handler(
         name: users.name,
         email: users.email,
         username: users.username,
+        role: users.role,
       })
       .from(users)
       .where(eq(users.id, session.userId))
@@ -46,6 +47,7 @@ export const getSessionFn = createServerFn({ method: "GET" }).handler(
         name: user.name,
         email: user.email,
         username: user.username,
+        role: user.role,
       },
     };
   },

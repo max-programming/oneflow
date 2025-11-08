@@ -14,6 +14,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardPmRouteRouteImport } from './routes/dashboard/pm/route'
 import { Route as DashboardPmIndexRouteImport } from './routes/dashboard/pm/index'
 
 const SignUpRoute = SignUpRouteImport.update({
@@ -41,10 +42,15 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-const DashboardPmIndexRoute = DashboardPmIndexRouteImport.update({
-  id: '/pm/',
-  path: '/pm/',
+const DashboardPmRouteRoute = DashboardPmRouteRouteImport.update({
+  id: '/pm',
+  path: '/pm',
   getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardPmIndexRoute = DashboardPmIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardPmRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -52,8 +58,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/dashboard/pm': typeof DashboardPmRouteRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
-  '/dashboard/pm': typeof DashboardPmIndexRoute
+  '/dashboard/pm/': typeof DashboardPmIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,6 +75,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/dashboard/pm': typeof DashboardPmRouteRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/pm/': typeof DashboardPmIndexRoute
 }
@@ -78,8 +86,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/sign-in'
     | '/sign-up'
-    | '/dashboard/'
     | '/dashboard/pm'
+    | '/dashboard/'
+    | '/dashboard/pm/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/sign-in' | '/sign-up' | '/dashboard' | '/dashboard/pm'
   id:
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/sign-in'
     | '/sign-up'
+    | '/dashboard/pm'
     | '/dashboard/'
     | '/dashboard/pm/'
   fileRoutesById: FileRoutesById
@@ -136,24 +146,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
-    '/dashboard/pm/': {
-      id: '/dashboard/pm/'
+    '/dashboard/pm': {
+      id: '/dashboard/pm'
       path: '/pm'
       fullPath: '/dashboard/pm'
-      preLoaderRoute: typeof DashboardPmIndexRouteImport
+      preLoaderRoute: typeof DashboardPmRouteRouteImport
       parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/pm/': {
+      id: '/dashboard/pm/'
+      path: '/'
+      fullPath: '/dashboard/pm/'
+      preLoaderRoute: typeof DashboardPmIndexRouteImport
+      parentRoute: typeof DashboardPmRouteRoute
     }
   }
 }
 
-interface DashboardRouteRouteChildren {
-  DashboardIndexRoute: typeof DashboardIndexRoute
+interface DashboardPmRouteRouteChildren {
   DashboardPmIndexRoute: typeof DashboardPmIndexRoute
 }
 
-const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
-  DashboardIndexRoute: DashboardIndexRoute,
+const DashboardPmRouteRouteChildren: DashboardPmRouteRouteChildren = {
   DashboardPmIndexRoute: DashboardPmIndexRoute,
+}
+
+const DashboardPmRouteRouteWithChildren =
+  DashboardPmRouteRoute._addFileChildren(DashboardPmRouteRouteChildren)
+
+interface DashboardRouteRouteChildren {
+  DashboardPmRouteRoute: typeof DashboardPmRouteRouteWithChildren
+  DashboardIndexRoute: typeof DashboardIndexRoute
+}
+
+const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
+  DashboardPmRouteRoute: DashboardPmRouteRouteWithChildren,
+  DashboardIndexRoute: DashboardIndexRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
