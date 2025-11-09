@@ -42,7 +42,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -64,7 +63,9 @@ type PurchaseOrders = Awaited<ReturnType<typeof getPurchaseOrdersFn>>;
 function PurchaseOrderCreateDialog() {
   const [open, setOpen] = React.useState(false);
   const [orderDateOpen, setOrderDateOpen] = React.useState(false);
-  const [orderDate, setOrderDate] = React.useState<Date | undefined>(new Date());
+  const [orderDate, setOrderDate] = React.useState<Date | undefined>(
+    new Date(),
+  );
   const [formData, setFormData] = React.useState({
     vendorId: 0,
     projectId: 0,
@@ -122,7 +123,7 @@ function PurchaseOrderCreateDialog() {
     createMutation.mutate({
       data: {
         ...formData,
-        vendorId: parseInt(formData.vendorId),
+        vendorId: formData.vendorId,
         projectId: formData.projectId || null,
         orderDate: orderDate.toISOString().split("T")[0],
       },
@@ -228,7 +229,10 @@ function PurchaseOrderCreateDialog() {
             </Label>
             <Popover open={orderDateOpen} onOpenChange={setOrderDateOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
                   {orderDate ? (
                     orderDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -367,7 +371,6 @@ export function PurchaseOrdersTable() {
       );
     }
   }, [isError, error]);
-
 
   return (
     <div className="space-y-4">

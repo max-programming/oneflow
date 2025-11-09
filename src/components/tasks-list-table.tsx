@@ -40,7 +40,7 @@ import {
   isPast,
   differenceInDays,
 } from "date-fns";
-import type { TaskStatusEnum, UserRole } from "@/db/schema";
+import type { TaskStatusEnum } from "@/db/schema";
 
 interface TasksListTableProps {
   limit?: number;

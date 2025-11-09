@@ -1,5 +1,10 @@
 import * as React from "react";
-import { IconPlus, IconTrash, IconEdit, IconCalendar } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconTrash,
+  IconEdit,
+  IconCalendar,
+} from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -60,7 +65,10 @@ import {
 import { getCustomersFn } from "@/server/customer";
 import { getProjectsFn } from "@/server/projects";
 import { getSalesOrdersFn } from "@/server/sales-orders";
-import { getPaymentBadgeVariant, getPaymentStatusMessage } from "@/lib/financial-utils";
+import {
+  getPaymentBadgeVariant,
+  getPaymentStatusMessage,
+} from "@/lib/financial-utils";
 
 type CustomerInvoices = Awaited<ReturnType<typeof getCustomerInvoicesFn>>;
 
@@ -68,9 +76,11 @@ function CustomerInvoiceCreateDialog() {
   const [open, setOpen] = React.useState(false);
   const [invoiceDateOpen, setInvoiceDateOpen] = React.useState(false);
   const [dueDateOpen, setDueDateOpen] = React.useState(false);
-  const [invoiceDate, setInvoiceDate] = React.useState<Date | undefined>(new Date());
+  const [invoiceDate, setInvoiceDate] = React.useState<Date | undefined>(
+    new Date(),
+  );
   const [dueDate, setDueDate] = React.useState<Date | undefined>(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   );
   const [formData, setFormData] = React.useState({
     customerId: 0,
@@ -131,12 +141,7 @@ function CustomerInvoiceCreateDialog() {
   });
 
   function handleCreate() {
-    if (
-      !formData.customerId ||
-      !formData.amount ||
-      !invoiceDate ||
-      !dueDate
-    ) {
+    if (!formData.customerId || !formData.amount || !invoiceDate || !dueDate) {
       toast.error("Customer, amount, invoice date, and due date are required");
       return;
     }
@@ -145,7 +150,7 @@ function CustomerInvoiceCreateDialog() {
       data: {
         ...formData,
         projectId: formData.projectId || null,
-        salesOrderId: formData.salesOrderId ? parseInt(formData.salesOrderId) : null,
+        salesOrderId: formData.salesOrderId || null,
         invoiceDate: invoiceDate.toISOString().split("T")[0],
         dueDate: dueDate.toISOString().split("T")[0],
       },
@@ -280,7 +285,10 @@ function CustomerInvoiceCreateDialog() {
             </Label>
             <Popover open={invoiceDateOpen} onOpenChange={setInvoiceDateOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
                   {invoiceDate ? (
                     invoiceDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -312,7 +320,10 @@ function CustomerInvoiceCreateDialog() {
             </Label>
             <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
                   {dueDate ? (
                     dueDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -458,7 +469,10 @@ function EditInvoiceDialog({ invoice }: EditInvoiceDialogProps) {
             <Label htmlFor="status" className="text-right">
               Status *
             </Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status}
+              onValueChange={(value) => setStatus(value as typeof status)}
+            >
               <SelectTrigger className="col-span-3">
                 <SelectValue />
               </SelectTrigger>
@@ -567,7 +581,6 @@ export function CustomerInvoicesTable() {
     }
   }, [isError, error]);
 
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -623,7 +636,12 @@ export function CustomerInvoicesTable() {
                     ₹{parseFloat(invoice.totalAmount).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getPaymentBadgeVariant(invoice.status, invoice.dueDate)}>
+                    <Badge
+                      variant={getPaymentBadgeVariant(
+                        invoice.status,
+                        invoice.dueDate,
+                      )}
+                    >
                       {getPaymentStatusMessage(invoice.status, invoice.dueDate)}
                     </Badge>
                   </TableCell>
