@@ -13,6 +13,8 @@ import {
   IconFileText,
   IconCash,
   IconBuilding,
+  IconFileDescription,
+  IconClipboardCheck,
 } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 
@@ -42,6 +44,19 @@ const data = {
       title: "Projects",
       url: "/dashboard/projects",
       icon: IconFolder,
+    },
+  ],
+  navExpenses: [
+    {
+      title: "My Expenses",
+      url: "/dashboard/my-expenses",
+      icon: IconFileDescription,
+    },
+    {
+      title: "Pending Approvals",
+      url: "/dashboard/pending-approvals",
+      icon: IconClipboardCheck,
+      requiresPM: true,
     },
   ],
   navAdmin: [
@@ -78,11 +93,6 @@ const data = {
       icon: IconFileText,
     },
     {
-      title: "Expenses",
-      url: "/dashboard/settings/expenses",
-      icon: IconCash,
-    },
-    {
       title: "Vendors",
       url: "/dashboard/settings/vendors",
       icon: IconBuilding,
@@ -95,7 +105,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const session = routerState.matches[0]?.context?.session;
   const isAdmin = session?.user?.role === "admin";
   const isSalesFinance = session?.user?.role === "sales-finance";
+  const isProjectManager = session?.user?.role === "project-manager";
   const canAccessSettings = isAdmin || isSalesFinance;
+  const canApproveExpenses = isAdmin || isProjectManager;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -116,6 +128,32 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <IconCash className="mr-2 h-4 w-4" />
+            Expenses
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {data.navExpenses
+                .filter((item) => !item.requiresPM || canApproveExpenses)
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.title}
+                      isActive={routerState.location.pathname === item.url}
+                    >
+                      <Link to={item.url}>
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
         {canAccessSettings && (
           <SidebarGroup>
             <SidebarGroupLabel>

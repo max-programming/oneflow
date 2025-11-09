@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { expenses, projects, users } from "@/db/schema";
+import { customerInvoices, expenses, projects, users } from "@/db/schema";
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -121,12 +121,15 @@ export const getExpensesFn = createServerFn({ method: "GET" })
         >`(SELECT name FROM users WHERE id = ${expenses.approvedBy})`,
         approvedAt: expenses.approvedAt,
         notes: expenses.notes,
+        invoiceId: expenses.invoiceId,
+        invoiceNumber: customerInvoices.invoiceNumber,
         createdAt: expenses.createdAt,
         updatedAt: expenses.updatedAt,
       })
       .from(expenses)
       .leftJoin(users, eq(expenses.userId, users.id))
       .leftJoin(projects, eq(expenses.projectId, projects.id))
+      .leftJoin(customerInvoices, eq(expenses.invoiceId, customerInvoices.id))
       .where(and(...conditions))
       .orderBy(desc(expenses.createdAt));
 
@@ -165,12 +168,15 @@ export const getExpenseByIdFn = createServerFn({ method: "GET" })
         >`(SELECT name FROM users WHERE id = ${expenses.approvedBy})`,
         approvedAt: expenses.approvedAt,
         notes: expenses.notes,
+        invoiceId: expenses.invoiceId,
+        invoiceNumber: customerInvoices.invoiceNumber,
         createdAt: expenses.createdAt,
         updatedAt: expenses.updatedAt,
       })
       .from(expenses)
       .leftJoin(users, eq(expenses.userId, users.id))
       .leftJoin(projects, eq(expenses.projectId, projects.id))
+      .leftJoin(customerInvoices, eq(expenses.invoiceId, customerInvoices.id))
       .where(and(eq(expenses.id, data.expenseId), isNull(expenses.deletedAt)))
       .limit(1);
 
@@ -268,7 +274,7 @@ export const updateExpenseFn = createServerFn({ method: "POST" })
     return updatedExpense;
   });
 
-// Approve Expense - Project Manager or Admin can approve
+// Approve Expense - Project Manager of the expense's project or Admin can approve
 export const approveExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
@@ -279,24 +285,90 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
+    const userRole = context.user.role;
 
-    // Check if expense exists and is pending
-    const [currentExpense] = await db
-      .select({ approvalStatus: expenses.approvalStatus })
+    // Get expense with project details
+    const [expense] = await db
+      .select({
+        id: expenses.id,
+        expenseNumber: expenses.expenseNumber,
+        projectId: expenses.projectId,
+        description: expenses.description,
+        amount: expenses.amount,
+        taxPercentage: expenses.taxPercentage,
+        totalAmount: expenses.totalAmount,
+        billable: expenses.billable,
+        approvalStatus: expenses.approvalStatus,
+        managerId: projects.managerId,
+        customerId: projects.customerId,
+      })
       .from(expenses)
+      .leftJoin(projects, eq(expenses.projectId, projects.id))
       .where(eq(expenses.id, data.expenseId))
       .limit(1);
 
-    if (!currentExpense) {
+    if (!expense) {
       throw new Error("Expense not found");
     }
 
-    if (currentExpense.approvalStatus !== "pending") {
+    if (expense.approvalStatus !== "pending") {
       throw new Error(
-        `Expense has already been ${currentExpense.approvalStatus}`,
+        `Expense has already been ${expense.approvalStatus}`,
       );
     }
 
+    // Verify user is the project manager or admin
+    if (!expense.projectId) {
+      throw new Error("Expense must be linked to a project before approval");
+    }
+
+    if (userRole !== "admin" && userId !== expense.managerId) {
+      throw new Error(
+        "Only the project manager or admin can approve this expense",
+      );
+    }
+
+    let invoiceId: number | undefined;
+
+    // If expense is billable, auto-create customer invoice
+    if (expense.billable && expense.customerId) {
+      const today = new Date().toISOString().split("T")[0];
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+      const dueDateStr = dueDate.toISOString().split("T")[0];
+
+      // Create customer invoice
+      const [tempInvoice] = await db
+        .insert(customerInvoices)
+        .values({
+          invoiceNumber: "TEMP", // Temporary, will be updated
+          projectId: expense.projectId,
+          customerId: expense.customerId,
+          description: `Billable Expense - ${expense.expenseNumber}: ${expense.description}`,
+          amount: expense.amount,
+          taxPercentage: expense.taxPercentage,
+          totalAmount: expense.totalAmount,
+          invoiceDate: today,
+          dueDate: dueDateStr,
+          status: "draft",
+          createdBy: userId,
+        })
+        .returning();
+
+      if (tempInvoice) {
+        // Update with actual invoice number based on ID
+        const invoiceNumber = `INV-${tempInvoice.id.toString().padStart(3, "0")}`;
+        const [createdInvoice] = await db
+          .update(customerInvoices)
+          .set({ invoiceNumber })
+          .where(eq(customerInvoices.id, tempInvoice.id))
+          .returning();
+
+        invoiceId = createdInvoice?.id;
+      }
+    }
+
+    // Approve the expense and link to invoice if created
     const [approvedExpense] = await db
       .update(expenses)
       .set({
@@ -304,6 +376,7 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
         approvedBy: userId,
         approvedAt: new Date(),
         notes: data.notes,
+        ...(invoiceId && { invoiceId }),
       })
       .where(eq(expenses.id, data.expenseId))
       .returning();
@@ -315,7 +388,7 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
     return approvedExpense;
   });
 
-// Reject Expense - Project Manager or Admin can reject
+// Reject Expense - Project Manager of the expense's project or Admin can reject
 export const rejectExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
@@ -326,21 +399,39 @@ export const rejectExpenseFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
+    const userRole = context.user.role;
 
-    // Check if expense exists and is pending
-    const [currentExpense] = await db
-      .select({ approvalStatus: expenses.approvalStatus })
+    // Get expense with project details to verify PM
+    const [expense] = await db
+      .select({
+        id: expenses.id,
+        projectId: expenses.projectId,
+        approvalStatus: expenses.approvalStatus,
+        managerId: projects.managerId,
+      })
       .from(expenses)
+      .leftJoin(projects, eq(expenses.projectId, projects.id))
       .where(eq(expenses.id, data.expenseId))
       .limit(1);
 
-    if (!currentExpense) {
+    if (!expense) {
       throw new Error("Expense not found");
     }
 
-    if (currentExpense.approvalStatus !== "pending") {
+    if (expense.approvalStatus !== "pending") {
       throw new Error(
-        `Expense has already been ${currentExpense.approvalStatus}`,
+        `Expense has already been ${expense.approvalStatus}`,
+      );
+    }
+
+    // Verify user is the project manager or admin
+    if (!expense.projectId) {
+      throw new Error("Expense must be linked to a project before rejection");
+    }
+
+    if (userRole !== "admin" && userId !== expense.managerId) {
+      throw new Error(
+        "Only the project manager or admin can reject this expense",
       );
     }
 
@@ -462,4 +553,172 @@ export const unlinkExpenseFromProjectFn = createServerFn({ method: "POST" })
     }
 
     return updatedExpense;
+  });
+
+// Get My Expenses - Current user's submitted expenses
+export const getMyExpensesFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z
+      .object({
+        approvalStatus: z.enum(["pending", "approved", "rejected"]).optional(),
+        projectId: z.uuid().optional(),
+      })
+      .optional(),
+  )
+  .handler(async ({ data, context }) => {
+    const userId = context.user.id;
+    const conditions = [
+      isNull(expenses.deletedAt),
+      eq(expenses.userId, userId),
+    ];
+
+    if (data?.approvalStatus) {
+      conditions.push(eq(expenses.approvalStatus, data.approvalStatus));
+    }
+
+    if (data?.projectId) {
+      conditions.push(eq(expenses.projectId, data.projectId));
+    }
+
+    const myExpenses = await db
+      .select({
+        id: expenses.id,
+        expenseNumber: expenses.expenseNumber,
+        projectId: expenses.projectId,
+        projectName: projects.name,
+        description: expenses.description,
+        category: expenses.category,
+        amount: expenses.amount,
+        taxPercentage: expenses.taxPercentage,
+        totalAmount: expenses.totalAmount,
+        expenseDate: expenses.expenseDate,
+        billable: expenses.billable,
+        approvalStatus: expenses.approvalStatus,
+        approvedBy: expenses.approvedBy,
+        approvedByName: sql<
+          string | null
+        >`(SELECT name FROM users WHERE id = ${expenses.approvedBy})`,
+        approvedAt: expenses.approvedAt,
+        notes: expenses.notes,
+        invoiceId: expenses.invoiceId,
+        invoiceNumber: customerInvoices.invoiceNumber,
+        createdAt: expenses.createdAt,
+        updatedAt: expenses.updatedAt,
+      })
+      .from(expenses)
+      .leftJoin(projects, eq(expenses.projectId, projects.id))
+      .leftJoin(customerInvoices, eq(expenses.invoiceId, customerInvoices.id))
+      .where(and(...conditions))
+      .orderBy(desc(expenses.createdAt));
+
+    return myExpenses;
+  });
+
+// Get Project Expenses - All expenses for a specific project
+export const getProjectExpensesFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.uuid("Invalid project ID"),
+      approvalStatus: z.enum(["pending", "approved", "rejected"]).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const conditions = [
+      isNull(expenses.deletedAt),
+      eq(expenses.projectId, data.projectId),
+    ];
+
+    if (data.approvalStatus) {
+      conditions.push(eq(expenses.approvalStatus, data.approvalStatus));
+    }
+
+    const projectExpenses = await db
+      .select({
+        id: expenses.id,
+        expenseNumber: expenses.expenseNumber,
+        projectId: expenses.projectId,
+        projectName: projects.name,
+        userId: expenses.userId,
+        userName: users.name,
+        userEmail: users.email,
+        description: expenses.description,
+        category: expenses.category,
+        amount: expenses.amount,
+        taxPercentage: expenses.taxPercentage,
+        totalAmount: expenses.totalAmount,
+        expenseDate: expenses.expenseDate,
+        billable: expenses.billable,
+        approvalStatus: expenses.approvalStatus,
+        approvedBy: expenses.approvedBy,
+        approvedByName: sql<
+          string | null
+        >`(SELECT name FROM users WHERE id = ${expenses.approvedBy})`,
+        approvedAt: expenses.approvedAt,
+        notes: expenses.notes,
+        invoiceId: expenses.invoiceId,
+        invoiceNumber: customerInvoices.invoiceNumber,
+        createdAt: expenses.createdAt,
+        updatedAt: expenses.updatedAt,
+      })
+      .from(expenses)
+      .leftJoin(users, eq(expenses.userId, users.id))
+      .leftJoin(projects, eq(expenses.projectId, projects.id))
+      .leftJoin(customerInvoices, eq(expenses.invoiceId, customerInvoices.id))
+      .where(and(...conditions))
+      .orderBy(desc(expenses.createdAt));
+
+    return projectExpenses;
+  });
+
+// Get Expenses Pending My Approval - For Project Managers
+export const getExpensesPendingMyApprovalFn = createServerFn({
+  method: "GET",
+})
+  .middleware([authMiddleware, projectManagerOrAdmin])
+  .handler(async ({ context }) => {
+    const userId = context.user.id;
+    const userRole = context.user.role;
+
+    // If admin, get all pending expenses
+    // If PM, get only pending expenses from projects they manage
+    const conditions = [
+      isNull(expenses.deletedAt),
+      eq(expenses.approvalStatus, "pending"),
+    ];
+
+    // For PMs, only show expenses from their managed projects
+    if (userRole !== "admin") {
+      conditions.push(eq(projects.managerId, userId));
+    }
+
+    const pendingExpenses = await db
+      .select({
+        id: expenses.id,
+        expenseNumber: expenses.expenseNumber,
+        projectId: expenses.projectId,
+        projectName: projects.name,
+        userId: expenses.userId,
+        userName: users.name,
+        userEmail: users.email,
+        description: expenses.description,
+        category: expenses.category,
+        amount: expenses.amount,
+        taxPercentage: expenses.taxPercentage,
+        totalAmount: expenses.totalAmount,
+        expenseDate: expenses.expenseDate,
+        billable: expenses.billable,
+        approvalStatus: expenses.approvalStatus,
+        notes: expenses.notes,
+        createdAt: expenses.createdAt,
+        updatedAt: expenses.updatedAt,
+      })
+      .from(expenses)
+      .leftJoin(users, eq(expenses.userId, users.id))
+      .innerJoin(projects, eq(expenses.projectId, projects.id)) // INNER JOIN to ensure project exists
+      .where(and(...conditions))
+      .orderBy(desc(expenses.createdAt));
+
+    return pendingExpenses;
   });

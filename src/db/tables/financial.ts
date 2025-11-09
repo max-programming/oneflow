@@ -183,6 +183,7 @@ export const expenses = pgTable("expenses", {
   approvedBy: uuid().references(() => users.id), // Project Manager who approved
   approvedAt: timestamp(),
   notes: text(), // Approval notes or rejection reason
+  invoiceId: serial().references(() => customerInvoices.id), // Auto-created invoice for billable expenses
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp()
     .notNull()

@@ -85,23 +85,17 @@ export const getSalesFinanceDashboardFn = createServerFn({ method: "GET" })
     const draftOrders = await db
       .select({ count: count() })
       .from(salesOrders)
-      .where(
-        and(isNull(salesOrders.deletedAt), eq(salesOrders.status, "draft")),
-      );
+      .where(and(isNull(salesOrders.deletedAt)));
 
     const confirmedOrders = await db
       .select({ count: count() })
       .from(salesOrders)
-      .where(
-        and(isNull(salesOrders.deletedAt), eq(salesOrders.status, "confirmed")),
-      );
+      .where(and(isNull(salesOrders.deletedAt)));
 
     const doneOrders = await db
       .select({ count: count() })
       .from(salesOrders)
-      .where(
-        and(isNull(salesOrders.deletedAt), eq(salesOrders.status, "done")),
-      );
+      .where(and(isNull(salesOrders.deletedAt)));
 
     // Get customer count
     const customerCount = await db

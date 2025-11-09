@@ -1,0 +1,2 @@
+ALTER TABLE "expenses" ADD COLUMN "invoice_id" serial NOT NULL;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_invoice_id_customer_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."customer_invoices"("id") ON DELETE no action ON UPDATE no action;

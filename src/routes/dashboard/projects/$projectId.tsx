@@ -12,6 +12,7 @@ import { NewTaskDialog } from "@/components/tasks/new-task-dialog";
 import { TasksKanban } from "@/components/tasks/tasks-kanban";
 import { ProjectFinancialOverview } from "@/components/project-financial-overview";
 import { ProjectFinancialLinks } from "@/components/project-financial-links";
+import { ProjectExpensesTab } from "@/components/project-expenses-tab";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -66,7 +67,7 @@ function ProjectDetailsSkeleton() {
           {/* Tabs Skeleton */}
           <div className="space-y-6">
             <div className="flex space-x-1 rounded-lg bg-muted p-1">
-              {[...Array(11)].map((_, i) => (
+              {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-9 w-20" />
               ))}
             </div>
@@ -220,7 +221,6 @@ function RouteComponent() {
     enabled: !!projectId,
   });
 
-
   // Check if user can manage tasks (project manager or admin)
   const canManageTasks =
     session?.user?.role === "admin" ||
@@ -282,7 +282,13 @@ function RouteComponent() {
   const projectData = {
     ...project,
     daysLeft: project.deadlineDate
-      ? Math.max(0, Math.ceil((new Date(project.deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+      ? Math.max(
+          0,
+          Math.ceil(
+            (new Date(project.deadlineDate).getTime() - new Date().getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
       : 0,
     // Dynamic project statistics
     progress: projectStatistics?.progress || 0,
@@ -358,12 +364,11 @@ function RouteComponent() {
 
           {/* Navigation Tabs */}
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
               <TabsTrigger value="financial">Financial</TabsTrigger>
-              <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
-              <TabsTrigger value="discussions">Discussions</TabsTrigger>
+              <TabsTrigger value="expenses">Expenses</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-6">
@@ -523,20 +528,30 @@ function RouteComponent() {
                       <div>
                         <div className="flex items-center justify-between text-sm mb-2">
                           <span>
-                            {Math.max(0, projectData.daysLeft)} / {projectData.totalDays}{" "}
-                            Days Left
+                            {Math.max(0, projectData.daysLeft)} /{" "}
+                            {projectData.totalDays} Days Left
                           </span>
                           <span className="font-medium">
                             {projectData.totalDays > 0
-                              ? Math.max(0, (projectData.daysLeft / projectData.totalDays) * 100).toFixed(1)
-                              : "0.0"
-                            }%
+                              ? Math.max(
+                                  0,
+                                  (projectData.daysLeft /
+                                    projectData.totalDays) *
+                                    100,
+                                ).toFixed(1)
+                              : "0.0"}
+                            %
                           </span>
                         </div>
                         <Progress
                           value={
                             projectData.totalDays > 0
-                              ? Math.max(0, (projectData.daysLeft / projectData.totalDays) * 100)
+                              ? Math.max(
+                                  0,
+                                  (projectData.daysLeft /
+                                    projectData.totalDays) *
+                                    100,
+                                )
                               : 0
                           }
                           className="h-2"
@@ -614,25 +629,12 @@ function RouteComponent() {
               </div>
             </TabsContent>
 
-            <TabsContent value="timesheets">
-              <Card>
-                <CardContent className="flex items-center justify-center h-64">
-                  <p className="text-muted-foreground">
-                    Timesheets view coming soon...
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Add similar placeholders for other tabs */}
-            <TabsContent value="discussions">
-              <Card>
-                <CardContent className="flex items-center justify-center h-64">
-                  <p className="text-muted-foreground capitalize">
-                    Discussions view coming soon...
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Expenses Tab */}
+            <TabsContent value="expenses" className="mt-6">
+              <ProjectExpensesTab
+                projectId={projectId}
+                canManageExpenses={canManageTasks}
+              />
             </TabsContent>
           </Tabs>
         </div>

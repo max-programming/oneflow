@@ -14,6 +14,8 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardPendingApprovalsRouteImport } from './routes/dashboard/pending-approvals'
+import { Route as DashboardMyExpensesRouteImport } from './routes/dashboard/my-expenses'
 import { Route as DashboardSettingsRouteRouteImport } from './routes/dashboard/settings/route'
 import { Route as DashboardAdminRouteRouteImport } from './routes/dashboard/admin/route'
 import { Route as DashboardProjectsIndexRouteImport } from './routes/dashboard/projects/index'
@@ -21,7 +23,6 @@ import { Route as DashboardSettingsVendorsRouteImport } from './routes/dashboard
 import { Route as DashboardSettingsVendorBillsRouteImport } from './routes/dashboard/settings/vendor-bills'
 import { Route as DashboardSettingsSalesOrdersRouteImport } from './routes/dashboard/settings/sales-orders'
 import { Route as DashboardSettingsPurchaseOrdersRouteImport } from './routes/dashboard/settings/purchase-orders'
-import { Route as DashboardSettingsExpensesRouteImport } from './routes/dashboard/settings/expenses'
 import { Route as DashboardSettingsCustomerInvoicesRouteImport } from './routes/dashboard/settings/customer-invoices'
 import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
 import { Route as DashboardAdminUsersRouteImport } from './routes/dashboard/admin/users'
@@ -50,6 +51,17 @@ const IndexRoute = IndexRouteImport.update({
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardPendingApprovalsRoute =
+  DashboardPendingApprovalsRouteImport.update({
+    id: '/pending-approvals',
+    path: '/pending-approvals',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
+const DashboardMyExpensesRoute = DashboardMyExpensesRouteImport.update({
+  id: '/my-expenses',
+  path: '/my-expenses',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardSettingsRouteRoute = DashboardSettingsRouteRouteImport.update({
@@ -91,12 +103,6 @@ const DashboardSettingsPurchaseOrdersRoute =
     path: '/purchase-orders',
     getParentRoute: () => DashboardSettingsRouteRoute,
   } as any)
-const DashboardSettingsExpensesRoute =
-  DashboardSettingsExpensesRouteImport.update({
-    id: '/expenses',
-    path: '/expenses',
-    getParentRoute: () => DashboardSettingsRouteRoute,
-  } as any)
 const DashboardSettingsCustomerInvoicesRoute =
   DashboardSettingsCustomerInvoicesRouteImport.update({
     id: '/customer-invoices',
@@ -127,12 +133,13 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof SignUpRoute
   '/dashboard/admin': typeof DashboardAdminRouteRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRouteRouteWithChildren
+  '/dashboard/my-expenses': typeof DashboardMyExpensesRoute
+  '/dashboard/pending-approvals': typeof DashboardPendingApprovalsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/admin/customers': typeof DashboardAdminCustomersRoute
   '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRoute
   '/dashboard/settings/customer-invoices': typeof DashboardSettingsCustomerInvoicesRoute
-  '/dashboard/settings/expenses': typeof DashboardSettingsExpensesRoute
   '/dashboard/settings/purchase-orders': typeof DashboardSettingsPurchaseOrdersRoute
   '/dashboard/settings/sales-orders': typeof DashboardSettingsSalesOrdersRoute
   '/dashboard/settings/vendor-bills': typeof DashboardSettingsVendorBillsRoute
@@ -145,12 +152,13 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpRoute
   '/dashboard/admin': typeof DashboardAdminRouteRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRouteRouteWithChildren
+  '/dashboard/my-expenses': typeof DashboardMyExpensesRoute
+  '/dashboard/pending-approvals': typeof DashboardPendingApprovalsRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/admin/customers': typeof DashboardAdminCustomersRoute
   '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRoute
   '/dashboard/settings/customer-invoices': typeof DashboardSettingsCustomerInvoicesRoute
-  '/dashboard/settings/expenses': typeof DashboardSettingsExpensesRoute
   '/dashboard/settings/purchase-orders': typeof DashboardSettingsPurchaseOrdersRoute
   '/dashboard/settings/sales-orders': typeof DashboardSettingsSalesOrdersRoute
   '/dashboard/settings/vendor-bills': typeof DashboardSettingsVendorBillsRoute
@@ -165,12 +173,13 @@ export interface FileRoutesById {
   '/sign-up': typeof SignUpRoute
   '/dashboard/admin': typeof DashboardAdminRouteRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRouteRouteWithChildren
+  '/dashboard/my-expenses': typeof DashboardMyExpensesRoute
+  '/dashboard/pending-approvals': typeof DashboardPendingApprovalsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/admin/customers': typeof DashboardAdminCustomersRoute
   '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRoute
   '/dashboard/settings/customer-invoices': typeof DashboardSettingsCustomerInvoicesRoute
-  '/dashboard/settings/expenses': typeof DashboardSettingsExpensesRoute
   '/dashboard/settings/purchase-orders': typeof DashboardSettingsPurchaseOrdersRoute
   '/dashboard/settings/sales-orders': typeof DashboardSettingsSalesOrdersRoute
   '/dashboard/settings/vendor-bills': typeof DashboardSettingsVendorBillsRoute
@@ -186,12 +195,13 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/dashboard/admin'
     | '/dashboard/settings'
+    | '/dashboard/my-expenses'
+    | '/dashboard/pending-approvals'
     | '/dashboard/'
     | '/dashboard/admin/customers'
     | '/dashboard/admin/users'
     | '/dashboard/projects/$projectId'
     | '/dashboard/settings/customer-invoices'
-    | '/dashboard/settings/expenses'
     | '/dashboard/settings/purchase-orders'
     | '/dashboard/settings/sales-orders'
     | '/dashboard/settings/vendor-bills'
@@ -204,12 +214,13 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/dashboard/admin'
     | '/dashboard/settings'
+    | '/dashboard/my-expenses'
+    | '/dashboard/pending-approvals'
     | '/dashboard'
     | '/dashboard/admin/customers'
     | '/dashboard/admin/users'
     | '/dashboard/projects/$projectId'
     | '/dashboard/settings/customer-invoices'
-    | '/dashboard/settings/expenses'
     | '/dashboard/settings/purchase-orders'
     | '/dashboard/settings/sales-orders'
     | '/dashboard/settings/vendor-bills'
@@ -223,12 +234,13 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/dashboard/admin'
     | '/dashboard/settings'
+    | '/dashboard/my-expenses'
+    | '/dashboard/pending-approvals'
     | '/dashboard/'
     | '/dashboard/admin/customers'
     | '/dashboard/admin/users'
     | '/dashboard/projects/$projectId'
     | '/dashboard/settings/customer-invoices'
-    | '/dashboard/settings/expenses'
     | '/dashboard/settings/purchase-orders'
     | '/dashboard/settings/sales-orders'
     | '/dashboard/settings/vendor-bills'
@@ -280,6 +292,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/pending-approvals': {
+      id: '/dashboard/pending-approvals'
+      path: '/pending-approvals'
+      fullPath: '/dashboard/pending-approvals'
+      preLoaderRoute: typeof DashboardPendingApprovalsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/my-expenses': {
+      id: '/dashboard/my-expenses'
+      path: '/my-expenses'
+      fullPath: '/dashboard/my-expenses'
+      preLoaderRoute: typeof DashboardMyExpensesRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/settings': {
       id: '/dashboard/settings'
       path: '/settings'
@@ -329,13 +355,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsPurchaseOrdersRouteImport
       parentRoute: typeof DashboardSettingsRouteRoute
     }
-    '/dashboard/settings/expenses': {
-      id: '/dashboard/settings/expenses'
-      path: '/expenses'
-      fullPath: '/dashboard/settings/expenses'
-      preLoaderRoute: typeof DashboardSettingsExpensesRouteImport
-      parentRoute: typeof DashboardSettingsRouteRoute
-    }
     '/dashboard/settings/customer-invoices': {
       id: '/dashboard/settings/customer-invoices'
       path: '/customer-invoices'
@@ -382,7 +401,6 @@ const DashboardAdminRouteRouteWithChildren =
 
 interface DashboardSettingsRouteRouteChildren {
   DashboardSettingsCustomerInvoicesRoute: typeof DashboardSettingsCustomerInvoicesRoute
-  DashboardSettingsExpensesRoute: typeof DashboardSettingsExpensesRoute
   DashboardSettingsPurchaseOrdersRoute: typeof DashboardSettingsPurchaseOrdersRoute
   DashboardSettingsSalesOrdersRoute: typeof DashboardSettingsSalesOrdersRoute
   DashboardSettingsVendorBillsRoute: typeof DashboardSettingsVendorBillsRoute
@@ -393,7 +411,6 @@ const DashboardSettingsRouteRouteChildren: DashboardSettingsRouteRouteChildren =
   {
     DashboardSettingsCustomerInvoicesRoute:
       DashboardSettingsCustomerInvoicesRoute,
-    DashboardSettingsExpensesRoute: DashboardSettingsExpensesRoute,
     DashboardSettingsPurchaseOrdersRoute: DashboardSettingsPurchaseOrdersRoute,
     DashboardSettingsSalesOrdersRoute: DashboardSettingsSalesOrdersRoute,
     DashboardSettingsVendorBillsRoute: DashboardSettingsVendorBillsRoute,
@@ -408,6 +425,8 @@ const DashboardSettingsRouteRouteWithChildren =
 interface DashboardRouteRouteChildren {
   DashboardAdminRouteRoute: typeof DashboardAdminRouteRouteWithChildren
   DashboardSettingsRouteRoute: typeof DashboardSettingsRouteRouteWithChildren
+  DashboardMyExpensesRoute: typeof DashboardMyExpensesRoute
+  DashboardPendingApprovalsRoute: typeof DashboardPendingApprovalsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardProjectsProjectIdRoute: typeof DashboardProjectsProjectIdRoute
   DashboardProjectsIndexRoute: typeof DashboardProjectsIndexRoute
@@ -416,6 +435,8 @@ interface DashboardRouteRouteChildren {
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardAdminRouteRoute: DashboardAdminRouteRouteWithChildren,
   DashboardSettingsRouteRoute: DashboardSettingsRouteRouteWithChildren,
+  DashboardMyExpensesRoute: DashboardMyExpensesRoute,
+  DashboardPendingApprovalsRoute: DashboardPendingApprovalsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardProjectsProjectIdRoute: DashboardProjectsProjectIdRoute,
   DashboardProjectsIndexRoute: DashboardProjectsIndexRoute,
