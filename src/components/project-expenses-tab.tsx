@@ -588,7 +588,7 @@ export function ProjectExpensesTab({
   const approvedAmount =
     expenses
       ?.filter((e) => e.approvalStatus === "approved")
-      .reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
 
   return (
     <div className="space-y-6">
