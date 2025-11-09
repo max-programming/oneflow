@@ -49,17 +49,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import {
-  getMyExpensesFn,
-  createExpenseFn,
-} from "@/server/expenses";
+import { getMyExpensesFn, createExpenseFn } from "@/server/expenses";
 import { getProjectsFn } from "@/server/projects";
 
 export const Route = createFileRoute("/dashboard/my-expenses")({
@@ -71,9 +63,11 @@ type MyExpenses = Awaited<ReturnType<typeof getMyExpensesFn>>;
 function ExpenseCreateDialog() {
   const [open, setOpen] = React.useState(false);
   const [expenseDateOpen, setExpenseDateOpen] = React.useState(false);
-  const [expenseDate, setExpenseDate] = React.useState<Date | undefined>(new Date());
+  const [expenseDate, setExpenseDate] = React.useState<Date | undefined>(
+    new Date(),
+  );
   const [formData, setFormData] = React.useState({
-    projectId: "",
+    projectId: 0,
     description: "",
     category: "",
     amount: "",
@@ -90,7 +84,7 @@ function ExpenseCreateDialog() {
   React.useEffect(() => {
     if (!open) {
       setFormData({
-        projectId: "",
+        projectId: 0,
         description: "",
         category: "",
         amount: "",
@@ -124,7 +118,7 @@ function ExpenseCreateDialog() {
     createMutation.mutate({
       data: {
         ...formData,
-        projectId: formData.projectId || null,
+        projectId: formData.projectId || 0,
         expenseDate: expenseDate.toISOString().split("T")[0],
       },
     });
@@ -151,9 +145,9 @@ function ExpenseCreateDialog() {
               Project *
             </Label>
             <Select
-              value={formData.projectId}
+              value={formData.projectId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, projectId: value }))
+                setFormData((prev) => ({ ...prev, projectId: parseInt(value) }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -161,7 +155,7 @@ function ExpenseCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
                   </SelectItem>
                 ))}
@@ -240,7 +234,10 @@ function ExpenseCreateDialog() {
             </Label>
             <Popover open={expenseDateOpen} onOpenChange={setExpenseDateOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
                   {expenseDate ? (
                     expenseDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -301,7 +298,11 @@ function ExpenseCreateDialog() {
   );
 }
 
-function ExpensesTable({ status }: { status?: "pending" | "approved" | "rejected" }) {
+function ExpensesTable({
+  status,
+}: {
+  status?: "pending" | "approved" | "rejected";
+}) {
   const {
     data: expenses,
     isLoading,
@@ -309,7 +310,10 @@ function ExpensesTable({ status }: { status?: "pending" | "approved" | "rejected
     error,
   } = useQuery({
     queryKey: ["my-expenses", status],
-    queryFn: () => getMyExpensesFn({ data: status ? { approvalStatus: status } : undefined }),
+    queryFn: () =>
+      getMyExpensesFn({
+        data: status ? { approvalStatus: status } : undefined,
+      }),
     staleTime: 5 * 60 * 1000,
     retry: 3,
   });
@@ -379,8 +383,8 @@ function ExpensesTable({ status }: { status?: "pending" | "approved" | "rejected
                 <TableCell>
                   {expense.projectId ? (
                     <Link
-                      to="/dashboard/projects/$projectId"
-                      params={{ projectId: expense.projectId }}
+                      to="/dashboard/projects/PRJ-{$projectId}"
+                      params={{ projectId: expense.projectId.toString() }}
                       className="text-blue-600 hover:text-blue-700 hover:underline"
                     >
                       {expense.projectName}
@@ -395,7 +399,9 @@ function ExpensesTable({ status }: { status?: "pending" | "approved" | "rejected
                 </TableCell>
                 <TableCell>
                   {expense.billable ? (
-                    <Badge variant="outline" className="bg-blue-50">Billable</Badge>
+                    <Badge variant="outline" className="bg-blue-50">
+                      Billable
+                    </Badge>
                   ) : (
                     <Badge variant="secondary">Non-billable</Badge>
                   )}
@@ -421,7 +427,10 @@ function ExpensesTable({ status }: { status?: "pending" | "approved" | "rejected
                 </TableCell>
                 <TableCell className="max-w-[150px]">
                   {expense.notes ? (
-                    <div className="truncate text-xs text-muted-foreground" title={expense.notes}>
+                    <div
+                      className="truncate text-xs text-muted-foreground"
+                      title={expense.notes}
+                    >
                       {expense.notes}
                     </div>
                   ) : (
@@ -438,20 +447,25 @@ function ExpensesTable({ status }: { status?: "pending" | "approved" | "rejected
 }
 
 function RouteComponent() {
-  const {
-    data: allExpenses,
-  } = useQuery({
+  const { data: allExpenses } = useQuery({
     queryKey: ["my-expenses"],
     queryFn: () => getMyExpensesFn(),
     staleTime: 5 * 60 * 1000,
   });
 
   const totalExpenses = allExpenses?.length || 0;
-  const pendingExpenses = allExpenses?.filter(e => e.approvalStatus === "pending").length || 0;
-  const approvedExpenses = allExpenses?.filter(e => e.approvalStatus === "approved").length || 0;
-  const rejectedExpenses = allExpenses?.filter(e => e.approvalStatus === "rejected").length || 0;
-  const totalAmount = allExpenses?.reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
-  const approvedAmount = allExpenses?.filter(e => e.approvalStatus === "approved").reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+  const pendingExpenses =
+    allExpenses?.filter((e) => e.approvalStatus === "pending").length || 0;
+  const approvedExpenses =
+    allExpenses?.filter((e) => e.approvalStatus === "approved").length || 0;
+  const rejectedExpenses =
+    allExpenses?.filter((e) => e.approvalStatus === "rejected").length || 0;
+  const totalAmount =
+    allExpenses?.reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+  const approvedAmount =
+    allExpenses
+      ?.filter((e) => e.approvalStatus === "approved")
+      .reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -459,9 +473,7 @@ function RouteComponent() {
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                My Expenses
-              </h2>
+              <h2 className="text-2xl font-bold tracking-tight">My Expenses</h2>
               <p className="text-muted-foreground">
                 Track and manage your submitted expenses
               </p>
@@ -480,31 +492,41 @@ function RouteComponent() {
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Pending</CardDescription>
-                <CardTitle className="text-2xl text-yellow-600">{pendingExpenses}</CardTitle>
+                <CardTitle className="text-2xl text-yellow-600">
+                  {pendingExpenses}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Approved</CardDescription>
-                <CardTitle className="text-2xl text-green-600">{approvedExpenses}</CardTitle>
+                <CardTitle className="text-2xl text-green-600">
+                  {approvedExpenses}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Rejected</CardDescription>
-                <CardTitle className="text-2xl text-red-600">{rejectedExpenses}</CardTitle>
+                <CardTitle className="text-2xl text-red-600">
+                  {rejectedExpenses}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Total Amount</CardDescription>
-                <CardTitle className="text-2xl">₹{totalAmount.toLocaleString()}</CardTitle>
+                <CardTitle className="text-2xl">
+                  ₹{totalAmount.toLocaleString()}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Approved Amount</CardDescription>
-                <CardTitle className="text-2xl text-green-600">₹{approvedAmount.toLocaleString()}</CardTitle>
+                <CardTitle className="text-2xl text-green-600">
+                  ₹{approvedAmount.toLocaleString()}
+                </CardTitle>
               </CardHeader>
             </Card>
           </div>

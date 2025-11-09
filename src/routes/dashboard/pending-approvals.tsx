@@ -45,7 +45,9 @@ export const Route = createFileRoute("/dashboard/pending-approvals")({
   component: RouteComponent,
 });
 
-type PendingExpenses = Awaited<ReturnType<typeof getExpensesPendingMyApprovalFn>>;
+type PendingExpenses = Awaited<
+  ReturnType<typeof getExpensesPendingMyApprovalFn>
+>;
 
 interface ApproveExpenseDialogProps {
   expense: PendingExpenses[number];
@@ -88,7 +90,11 @@ function ApproveExpenseDialog({ expense }: ApproveExpenseDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+        >
           <IconCheck className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -123,7 +129,9 @@ function ApproveExpenseDialog({ expense }: ApproveExpenseDialogProps) {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right font-medium">Billable:</Label>
               <div className="col-span-3">
-                <Badge variant="outline" className="bg-blue-50">Yes - Will create customer invoice</Badge>
+                <Badge variant="outline" className="bg-blue-50">
+                  Yes - Will create customer invoice
+                </Badge>
               </div>
             </div>
           )}
@@ -201,7 +209,11 @@ function RejectExpenseDialog({ expense }: RejectExpenseDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
           <IconX className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -272,15 +284,18 @@ function RouteComponent() {
   React.useEffect(() => {
     if (isError) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to load pending expenses",
+        error instanceof Error
+          ? error.message
+          : "Failed to load pending expenses",
       );
     }
   }, [isError, error]);
 
   const totalPending = expenses?.length || 0;
-  const totalAmount = expenses?.reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
-  const billableCount = expenses?.filter(e => e.billable).length || 0;
-  const nonBillableCount = expenses?.filter(e => !e.billable).length || 0;
+  const totalAmount =
+    expenses?.reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+  const billableCount = expenses?.filter((e) => e.billable).length || 0;
+  const nonBillableCount = expenses?.filter((e) => !e.billable).length || 0;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -300,19 +315,25 @@ function RouteComponent() {
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Pending Expenses</CardDescription>
-                <CardTitle className="text-2xl text-yellow-600">{totalPending}</CardTitle>
+                <CardTitle className="text-2xl text-yellow-600">
+                  {totalPending}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Total Amount</CardDescription>
-                <CardTitle className="text-2xl">₹{totalAmount.toLocaleString()}</CardTitle>
+                <CardTitle className="text-2xl">
+                  ₹{totalAmount.toLocaleString()}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Billable</CardDescription>
-                <CardTitle className="text-2xl text-blue-600">{billableCount}</CardTitle>
+                <CardTitle className="text-2xl text-blue-600">
+                  {billableCount}
+                </CardTitle>
               </CardHeader>
             </Card>
             <Card>
@@ -363,9 +384,12 @@ function RouteComponent() {
                         <TableCell colSpan={9} className="h-32 text-center">
                           <div className="flex flex-col items-center gap-2">
                             <IconCheck className="h-8 w-8 text-green-500" />
-                            <p className="text-lg font-medium">No pending approvals</p>
+                            <p className="text-lg font-medium">
+                              No pending approvals
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              All expenses from your managed projects have been reviewed
+                              All expenses from your managed projects have been
+                              reviewed
                             </p>
                           </div>
                         </TableCell>
@@ -379,8 +403,10 @@ function RouteComponent() {
                           <TableCell>
                             {expense.projectId ? (
                               <Link
-                                to="/dashboard/projects/$projectId"
-                                params={{ projectId: expense.projectId }}
+                                to="/dashboard/projects/PRJ-{$projectId}"
+                                params={{
+                                  projectId: expense.projectId.toString(),
+                                }}
                                 className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
                               >
                                 {expense.projectName}
@@ -391,12 +417,19 @@ function RouteComponent() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="text-sm">{expense.userName}</span>
-                              <span className="text-xs text-muted-foreground">{expense.userEmail}</span>
+                              <span className="text-sm">
+                                {expense.userName}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {expense.userEmail}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="max-w-[200px]">
-                            <div className="truncate" title={expense.description}>
+                            <div
+                              className="truncate"
+                              title={expense.description}
+                            >
                               {expense.description}
                             </div>
                           </TableCell>
