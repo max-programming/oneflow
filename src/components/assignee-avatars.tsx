@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 
 interface Assignee {
-  userId: string;
+  userId: number;
   userName: string | null;
   userEmail: string | null;
 }

@@ -185,7 +185,9 @@ export function TaskDetailsDialog({
   // Fetch timesheets
   const { data: timesheets, isLoading: timesheetsLoading } = useQuery({
     queryKey: ["task-timesheets", taskId],
-    queryFn: () => getTaskTimesheetsFn({ data: { taskId } }),
+    queryFn: () => {
+      return getTaskTimesheetsFn({ data: { taskId } });
+    },
     enabled: props.open,
     refetchOnWindowFocus: false,
   });

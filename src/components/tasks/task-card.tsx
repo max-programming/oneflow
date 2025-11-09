@@ -17,7 +17,7 @@ import { TaskDetailsDialog } from "./task-details-dialog";
 
 // Define base kanban item interface (compatible with KanbanItemProps)
 interface KanbanItemBase extends Record<string, unknown> {
-  id: number;
+  id: string;
   name: string;
   column: string;
 }
@@ -28,7 +28,7 @@ export interface TaskData extends KanbanItemBase {
   startDate: string;
   dueDate: string;
   assignees: Array<{
-    userId: string;
+    userId: number;
     userName: string | null;
     userEmail: string | null;
   }>;
@@ -99,7 +99,7 @@ export function TaskCard({
     <div className="relative">
       <div className="absolute right-3 bottom-3 flex items-center gap-1 z-10">
         <TaskDetailsDialog
-          taskId={task.id}
+          taskId={parseInt(task.id)}
           taskName={task.name}
           projectId={projectId}
         >

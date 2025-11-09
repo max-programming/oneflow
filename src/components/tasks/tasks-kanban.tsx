@@ -191,7 +191,9 @@ export function TasksKanban({
       return;
     }
 
-    const activeTask = localTasks.find((task) => task.id === active.id);
+    const activeTask = localTasks.find(
+      (task) => task.id === parseInt(active.id as string),
+    );
     if (!activeTask) {
       return;
     }
@@ -215,6 +217,7 @@ export function TasksKanban({
       ),
     );
 
+    console.log(typeof activeTask.id);
     // Update task status on server
     updateTaskMutation.mutate({
       data: {

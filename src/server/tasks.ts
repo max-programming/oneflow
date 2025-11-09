@@ -140,9 +140,9 @@ export const getProjectTasksFn = createServerFn({ method: "GET" })
         return acc;
       },
       {} as Record<
-        string,
+        number,
         Array<{
-          userId: string;
+          userId: number;
           userName: string | null;
           userEmail: string | null;
         }>
@@ -490,8 +490,6 @@ export const getTaskAssigneesFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const assignees = await db
       .select({
-        id: projectTaskAssignees.id,
-        taskId: projectTaskAssignees.taskId,
         userId: projectTaskAssignees.userId,
         userName: users.name,
         userEmail: users.email,
@@ -676,9 +674,9 @@ export const getProjectStatisticsFn = createServerFn({ method: "GET" })
   });
 
 async function verifyProjectManager(
-  userId: string,
+  userId: number,
   userRole: UserRole,
-  managerId: string,
+  managerId: number,
 ) {
   if (userId !== managerId && userRole !== "admin") {
     throw new Error(
@@ -763,9 +761,9 @@ export const getProjectManagerTasksFn = createServerFn({ method: "GET" })
         return acc;
       },
       {} as Record<
-        string,
+        number,
         Array<{
-          userId: string;
+          userId: number;
           userName: string | null;
           userEmail: string | null;
           userRole: string | null;
@@ -865,9 +863,9 @@ export const getAdminTasksFn = createServerFn({ method: "GET" })
         return acc;
       },
       {} as Record<
-        string,
+        number,
         Array<{
-          userId: string;
+          userId: number;
           userName: string | null;
           userEmail: string | null;
           userRole: string | null;
@@ -973,9 +971,9 @@ export const getTeamMemberTasksFn = createServerFn({ method: "GET" })
         return acc;
       },
       {} as Record<
-        string,
+        number,
         Array<{
-          userId: string;
+          userId: number;
           userName: string | null;
           userEmail: string | null;
           userRole: string | null;
@@ -1198,9 +1196,9 @@ export const getFilteredProjectManagerTasksFn = createServerFn({
         return acc;
       },
       {} as Record<
-        string,
+        number,
         Array<{
-          userId: string;
+          userId: number;
           userName: string | null;
           userEmail: string | null;
           userRole: string | null;
@@ -1429,9 +1427,9 @@ export const getFilteredAdminTasksFn = createServerFn({ method: "GET" })
         return acc;
       },
       {} as Record<
-        string,
+        number,
         Array<{
-          userId: string;
+          userId: number;
           userName: string | null;
           userEmail: string | null;
           userRole: string | null;
@@ -1668,9 +1666,9 @@ export const getFilteredTeamMemberTasksFn = createServerFn({ method: "GET" })
         return acc;
       },
       {} as Record<
-        string,
+        number,
         Array<{
-          userId: string;
+          userId: number;
           userName: string | null;
           userEmail: string | null;
           userRole: string | null;
