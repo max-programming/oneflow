@@ -5,7 +5,7 @@ import { getProjectFinancialSummaryFn } from "@/server/financial-summary";
 import { DollarSign, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
 interface ProjectFinancialOverviewProps {
-  projectId: string;
+  projectId: number;
 }
 
 export function ProjectFinancialOverview({
@@ -71,8 +71,7 @@ export function ProjectFinancialOverview({
               <div className="text-xs text-green-600">
                 {financialSummary.revenue.invoiceCount} invoice
                 {financialSummary.revenue.invoiceCount !== 1 ? "s" : ""}
-                {" • "}
-                ₹
+                {" • "}₹
                 {parseFloat(financialSummary.revenue.unpaid).toLocaleString()}{" "}
                 unpaid
               </div>

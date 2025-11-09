@@ -66,8 +66,8 @@ function PurchaseOrderCreateDialog() {
   const [orderDateOpen, setOrderDateOpen] = React.useState(false);
   const [orderDate, setOrderDate] = React.useState<Date | undefined>(new Date());
   const [formData, setFormData] = React.useState({
-    vendorId: "",
-    projectId: "",
+    vendorId: 0,
+    projectId: 0,
     description: "",
     amount: "",
     taxPercentage: "18",
@@ -87,8 +87,8 @@ function PurchaseOrderCreateDialog() {
   React.useEffect(() => {
     if (!open) {
       setFormData({
-        vendorId: "",
-        projectId: "",
+        vendorId: 0,
+        projectId: 0,
         description: "",
         amount: "",
         taxPercentage: "18",
@@ -150,9 +150,9 @@ function PurchaseOrderCreateDialog() {
               Vendor *
             </Label>
             <Select
-              value={formData.vendorId}
+              value={formData.vendorId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, vendorId: value }))
+                setFormData((prev) => ({ ...prev, vendorId: parseInt(value) }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -172,9 +172,9 @@ function PurchaseOrderCreateDialog() {
               Project
             </Label>
             <Select
-              value={formData.projectId}
+              value={formData.projectId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, projectId: value }))
+                setFormData((prev) => ({ ...prev, projectId: parseInt(value) }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -182,7 +182,7 @@ function PurchaseOrderCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
                   </SelectItem>
                 ))}
@@ -278,9 +278,7 @@ function PurchaseOrderCreateDialog() {
             onClick={handleCreate}
             disabled={createMutation.isPending}
           >
-            {createMutation.isPending
-              ? "Creating..."
-              : "Create Purchase Order"}
+            {createMutation.isPending ? "Creating..." : "Create Purchase Order"}
           </Button>
         </DialogFooter>
       </DialogContent>

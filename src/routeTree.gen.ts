@@ -24,7 +24,7 @@ import { Route as DashboardSettingsVendorBillsRouteImport } from './routes/dashb
 import { Route as DashboardSettingsSalesOrdersRouteImport } from './routes/dashboard/settings/sales-orders'
 import { Route as DashboardSettingsPurchaseOrdersRouteImport } from './routes/dashboard/settings/purchase-orders'
 import { Route as DashboardSettingsCustomerInvoicesRouteImport } from './routes/dashboard/settings/customer-invoices'
-import { Route as DashboardProjectsProjectIdRouteImport } from './routes/dashboard/projects/$projectId'
+import { Route as DashboardProjectsPRJChar123projectIdChar125RouteImport } from './routes/dashboard/projects/PRJ-{$projectId}'
 import { Route as DashboardAdminUsersRouteImport } from './routes/dashboard/admin/users'
 import { Route as DashboardAdminCustomersRouteImport } from './routes/dashboard/admin/customers'
 
@@ -109,10 +109,10 @@ const DashboardSettingsCustomerInvoicesRoute =
     path: '/customer-invoices',
     getParentRoute: () => DashboardSettingsRouteRoute,
   } as any)
-const DashboardProjectsProjectIdRoute =
-  DashboardProjectsProjectIdRouteImport.update({
-    id: '/projects/$projectId',
-    path: '/projects/$projectId',
+const DashboardProjectsPRJChar123projectIdChar125Route =
+  DashboardProjectsPRJChar123projectIdChar125RouteImport.update({
+    id: '/projects/PRJ-{$projectId}',
+    path: '/projects/PRJ-{$projectId}',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
 const DashboardAdminUsersRoute = DashboardAdminUsersRouteImport.update({
@@ -138,7 +138,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/admin/customers': typeof DashboardAdminCustomersRoute
   '/dashboard/admin/users': typeof DashboardAdminUsersRoute
-  '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRoute
+  '/dashboard/projects/PRJ-{$projectId}': typeof DashboardProjectsPRJChar123projectIdChar125Route
   '/dashboard/settings/customer-invoices': typeof DashboardSettingsCustomerInvoicesRoute
   '/dashboard/settings/purchase-orders': typeof DashboardSettingsPurchaseOrdersRoute
   '/dashboard/settings/sales-orders': typeof DashboardSettingsSalesOrdersRoute
@@ -157,7 +157,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/admin/customers': typeof DashboardAdminCustomersRoute
   '/dashboard/admin/users': typeof DashboardAdminUsersRoute
-  '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRoute
+  '/dashboard/projects/PRJ-{$projectId}': typeof DashboardProjectsPRJChar123projectIdChar125Route
   '/dashboard/settings/customer-invoices': typeof DashboardSettingsCustomerInvoicesRoute
   '/dashboard/settings/purchase-orders': typeof DashboardSettingsPurchaseOrdersRoute
   '/dashboard/settings/sales-orders': typeof DashboardSettingsSalesOrdersRoute
@@ -178,7 +178,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/admin/customers': typeof DashboardAdminCustomersRoute
   '/dashboard/admin/users': typeof DashboardAdminUsersRoute
-  '/dashboard/projects/$projectId': typeof DashboardProjectsProjectIdRoute
+  '/dashboard/projects/PRJ-{$projectId}': typeof DashboardProjectsPRJChar123projectIdChar125Route
   '/dashboard/settings/customer-invoices': typeof DashboardSettingsCustomerInvoicesRoute
   '/dashboard/settings/purchase-orders': typeof DashboardSettingsPurchaseOrdersRoute
   '/dashboard/settings/sales-orders': typeof DashboardSettingsSalesOrdersRoute
@@ -200,7 +200,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/admin/customers'
     | '/dashboard/admin/users'
-    | '/dashboard/projects/$projectId'
+    | '/dashboard/projects/PRJ-{$projectId}'
     | '/dashboard/settings/customer-invoices'
     | '/dashboard/settings/purchase-orders'
     | '/dashboard/settings/sales-orders'
@@ -219,7 +219,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/admin/customers'
     | '/dashboard/admin/users'
-    | '/dashboard/projects/$projectId'
+    | '/dashboard/projects/PRJ-{$projectId}'
     | '/dashboard/settings/customer-invoices'
     | '/dashboard/settings/purchase-orders'
     | '/dashboard/settings/sales-orders'
@@ -239,7 +239,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/admin/customers'
     | '/dashboard/admin/users'
-    | '/dashboard/projects/$projectId'
+    | '/dashboard/projects/PRJ-{$projectId}'
     | '/dashboard/settings/customer-invoices'
     | '/dashboard/settings/purchase-orders'
     | '/dashboard/settings/sales-orders'
@@ -362,11 +362,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsCustomerInvoicesRouteImport
       parentRoute: typeof DashboardSettingsRouteRoute
     }
-    '/dashboard/projects/$projectId': {
-      id: '/dashboard/projects/$projectId'
-      path: '/projects/$projectId'
-      fullPath: '/dashboard/projects/$projectId'
-      preLoaderRoute: typeof DashboardProjectsProjectIdRouteImport
+    '/dashboard/projects/PRJ-{$projectId}': {
+      id: '/dashboard/projects/PRJ-{$projectId}'
+      path: '/projects/PRJ-{$projectId}'
+      fullPath: '/dashboard/projects/PRJ-{$projectId}'
+      preLoaderRoute: typeof DashboardProjectsPRJChar123projectIdChar125RouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/admin/users': {
@@ -428,7 +428,7 @@ interface DashboardRouteRouteChildren {
   DashboardMyExpensesRoute: typeof DashboardMyExpensesRoute
   DashboardPendingApprovalsRoute: typeof DashboardPendingApprovalsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
-  DashboardProjectsProjectIdRoute: typeof DashboardProjectsProjectIdRoute
+  DashboardProjectsPRJChar123projectIdChar125Route: typeof DashboardProjectsPRJChar123projectIdChar125Route
   DashboardProjectsIndexRoute: typeof DashboardProjectsIndexRoute
 }
 
@@ -438,7 +438,8 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardMyExpensesRoute: DashboardMyExpensesRoute,
   DashboardPendingApprovalsRoute: DashboardPendingApprovalsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
-  DashboardProjectsProjectIdRoute: DashboardProjectsProjectIdRoute,
+  DashboardProjectsPRJChar123projectIdChar125Route:
+    DashboardProjectsPRJChar123projectIdChar125Route,
   DashboardProjectsIndexRoute: DashboardProjectsIndexRoute,
 }
 

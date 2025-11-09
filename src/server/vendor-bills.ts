@@ -29,7 +29,7 @@ export const createVendorBillFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      projectId: z.uuid().optional().nullable(),
+      projectId: z.number().optional().nullable(),
       vendorId: z.number().int().positive("Vendor is required"),
       purchaseOrderId: z.number().int().positive().optional().nullable(),
       description: z.string().optional(),
@@ -86,7 +86,7 @@ export const getVendorBillsFn = createServerFn({ method: "GET" })
   .inputValidator(
     z
       .object({
-        projectId: z.uuid().optional(),
+        projectId: z.number().optional(),
       })
       .optional(),
   )
@@ -191,7 +191,7 @@ export const updateVendorBillFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       billId: z.number().int().positive("Invalid bill ID"),
-      projectId: z.uuid().optional().nullable(),
+      projectId: z.number().optional().nullable(),
       vendorId: z.number().int().positive().optional(),
       purchaseOrderId: z.number().int().positive().optional().nullable(),
       description: z.string().optional(),
@@ -319,7 +319,7 @@ export const linkVendorBillToProjectFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       billId: z.number().int().positive("Invalid bill ID"),
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {

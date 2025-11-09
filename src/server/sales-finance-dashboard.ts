@@ -1,13 +1,7 @@
 import { db } from "@/db";
-import {
-  customerInvoices,
-  customers,
-  projects,
-  salesOrders,
-  users,
-} from "@/db/schema";
+import { customerInvoices, customers, salesOrders } from "@/db/schema";
 import { createServerFn } from "@tanstack/react-start";
-import { and, count, desc, eq, isNull, sql, gte, lte, or } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql, gte, or } from "drizzle-orm";
 import { z } from "zod";
 import { authMiddleware, salesFinanceOrAdmin } from "./auth-middleware";
 

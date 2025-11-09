@@ -140,9 +140,7 @@ function VendorCreateDialog() {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create Vendor</DialogTitle>
-          <DialogDescription>
-            Add a new vendor to the system.
-          </DialogDescription>
+          <DialogDescription>Add a new vendor to the system.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
@@ -264,7 +262,7 @@ function VendorEditDialog({ vendor }: VendorEditDialogProps) {
 
   const updateVendorMutation = useMutation({
     mutationFn: (data: {
-      vendorId: string;
+      vendorId: number;
       name?: string;
       email?: string;
       phone?: string;
@@ -406,7 +404,7 @@ function VendorDeleteDialog({ vendor }: VendorDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteVendorMutation = useMutation({
-    mutationFn: (vendorId: string) => deleteVendorFn({ data: { vendorId } }),
+    mutationFn: (vendorId: number) => deleteVendorFn({ data: { vendorId } }),
     onSuccess: () => {
       toast.success("Vendor deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["vendors"] });

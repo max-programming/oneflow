@@ -68,7 +68,7 @@ function ExpenseCreateDialog() {
   const [expenseDateOpen, setExpenseDateOpen] = React.useState(false);
   const [expenseDate, setExpenseDate] = React.useState<Date | undefined>(new Date());
   const [formData, setFormData] = React.useState({
-    projectId: "",
+    projectId: 0,
     description: "",
     category: "",
     amount: "",
@@ -85,7 +85,7 @@ function ExpenseCreateDialog() {
   React.useEffect(() => {
     if (!open) {
       setFormData({
-        projectId: "",
+        projectId: 0,
         description: "",
         category: "",
         amount: "",
@@ -136,9 +136,7 @@ function ExpenseCreateDialog() {
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Submit Expense</DialogTitle>
-          <DialogDescription>
-            Submit an expense for approval.
-          </DialogDescription>
+          <DialogDescription>Submit an expense for approval.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
@@ -146,9 +144,9 @@ function ExpenseCreateDialog() {
               Project
             </Label>
             <Select
-              value={formData.projectId}
+              value={formData.projectId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, projectId: value }))
+                setFormData((prev) => ({ ...prev, projectId: parseInt(value) }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -156,7 +154,7 @@ function ExpenseCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
                   </SelectItem>
                 ))}
@@ -491,8 +489,7 @@ function ExpenseDeleteDialog({ expense }: ExpenseDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (expenseId: number) =>
-      deleteExpenseFn({ data: { expenseId } }),
+    mutationFn: (expenseId: number) => deleteExpenseFn({ data: { expenseId } }),
     onSuccess: () => {
       toast.success("Expense deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["expenses"] });

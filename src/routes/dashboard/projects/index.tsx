@@ -111,7 +111,7 @@ function RouteComponent() {
           tags: searchParams.tags,
         },
       }),
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined as number | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 

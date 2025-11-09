@@ -21,13 +21,13 @@ export const createProjectTaskFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
       name: z.string().min(1, "Task name is required"),
       description: z.string().optional(),
       startDate: z.string(),
       dueDate: z.string(),
       assigneeIds: z
-        .array(z.uuid("Invalid assignee ID"))
+        .array(z.number("Invalid assignee ID"))
         .min(1, "At least one assignee is required"),
     }),
   )
@@ -84,7 +84,7 @@ export const getProjectTasksFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -161,7 +161,7 @@ export const getProjectTaskByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
+      taskId: z.number("Invalid task ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -209,7 +209,7 @@ export const updateProjectTaskFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
+      taskId: z.number("Invalid task ID"),
       name: z.string().min(1, "Task name is required").optional(),
       description: z.string().optional(),
       startDate: z.string().optional(),
@@ -271,7 +271,7 @@ export const deleteProjectTaskFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
+      taskId: z.number("Invalid task ID"),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -349,8 +349,8 @@ export const addTaskAssigneeFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
-      userId: z.uuid("Invalid user ID"),
+      taskId: z.number("Invalid task ID"),
+      userId: z.number("Invalid user ID"),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -426,8 +426,8 @@ export const removeTaskAssigneeFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
-      userId: z.uuid("Invalid user ID"),
+      taskId: z.number("Invalid task ID"),
+      userId: z.number("Invalid user ID"),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -484,7 +484,7 @@ export const getTaskAssigneesFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
+      taskId: z.number("Invalid task ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -510,7 +510,7 @@ export const getProjectTotalLoggedHoursFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -551,7 +551,7 @@ export const getProjectWeeklyLoggedHoursFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -619,7 +619,7 @@ export const getProjectStatisticsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -1006,7 +1006,7 @@ export const updateTaskStatusFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, teamMemberAccess])
   .inputValidator(
     z.object({
-      taskId: z.uuid("Invalid task ID"),
+      taskId: z.number("Invalid task ID"),
       status: z.enum(["waiting-to-start", "in-progress", "stuck", "done"]),
     }),
   )

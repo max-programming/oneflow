@@ -94,8 +94,8 @@ export function ProjectCard({
   return (
     <DropdownMenu>
       <Link
-        to="/dashboard/projects/$projectId"
-        params={{ projectId: project.id }}
+        to="/dashboard/projects/PRJ-{$projectId}"
+        params={{ projectId: project.id.toString() }}
         className="block"
       >
         <Card className="flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] cursor-pointer group">

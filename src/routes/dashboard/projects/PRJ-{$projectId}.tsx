@@ -21,7 +21,7 @@ import {
   getProjectWeeklyLoggedHoursFn,
 } from "@/server/tasks";
 
-export const Route = createFileRoute("/dashboard/projects/$projectId")({
+export const Route = createFileRoute("/dashboard/projects/PRJ-{$projectId}")({
   component: RouteComponent,
 });
 
@@ -190,7 +190,7 @@ function RouteComponent() {
   const { projectId } = Route.useParams();
   const { session } = Route.useRouteContext();
   const [newTaskDialogOpen, setNewTaskDialogOpen] = useState(false);
-  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(
+  const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(
     null,
   );
 
@@ -200,24 +200,32 @@ function RouteComponent() {
     error,
   } = useQuery({
     queryKey: ["project", projectId],
-    queryFn: () => getProjectByIdFn({ data: { projectId } }),
+    queryFn: () =>
+      getProjectByIdFn({ data: { projectId: parseInt(projectId) } }),
   });
 
   const { data: totalLoggedHours } = useQuery({
     queryKey: ["project-total-hours", projectId],
-    queryFn: () => getProjectTotalLoggedHoursFn({ data: { projectId } }),
+    queryFn: () =>
+      getProjectTotalLoggedHoursFn({
+        data: { projectId: parseInt(projectId) },
+      }),
     enabled: !!projectId,
   });
 
   const { data: weeklyHours } = useQuery({
     queryKey: ["project-weekly-hours", projectId],
-    queryFn: () => getProjectWeeklyLoggedHoursFn({ data: { projectId } }),
+    queryFn: () =>
+      getProjectWeeklyLoggedHoursFn({
+        data: { projectId: parseInt(projectId) },
+      }),
     enabled: !!projectId,
   });
 
   const { data: projectStatistics } = useQuery({
     queryKey: ["project-statistics", projectId],
-    queryFn: () => getProjectStatisticsFn({ data: { projectId } }),
+    queryFn: () =>
+      getProjectStatisticsFn({ data: { projectId: parseInt(projectId) } }),
     enabled: !!projectId,
   });
 
@@ -227,7 +235,7 @@ function RouteComponent() {
     (session?.user?.role === "project-manager" &&
       session?.user?.id === project?.managerId);
 
-  const handleTaskCreated = (taskId: string) => {
+  const handleTaskCreated = (taskId: number) => {
     setHighlightedTaskId(taskId);
   };
 
@@ -337,7 +345,7 @@ function RouteComponent() {
                   <NewTaskDialog
                     open={newTaskDialogOpen}
                     onOpenChange={setNewTaskDialogOpen}
-                    projectId={projectId}
+                    projectId={parseInt(projectId)}
                     onTaskCreated={handleTaskCreated}
                     triggerButton={
                       <Button size="sm">
@@ -615,8 +623,8 @@ function RouteComponent() {
             {/* Tasks Tab */}
             <TabsContent value="tasks" className="mt-6">
               <TasksKanban
-                projectId={projectId}
-                highlightedTaskId={highlightedTaskId}
+                projectId={parseInt(projectId)}
+                highlightedTaskId={highlightedTaskId?.toString()}
                 onHighlightComplete={handleHighlightComplete}
                 isAdminOrProjectManager={canManageTasks}
               />
@@ -625,15 +633,15 @@ function RouteComponent() {
             {/* Financial Tab */}
             <TabsContent value="financial" className="mt-6">
               <div className="space-y-6">
-                <ProjectFinancialOverview projectId={projectId} />
-                <ProjectFinancialLinks projectId={projectId} />
+                <ProjectFinancialOverview projectId={parseInt(projectId)} />
+                <ProjectFinancialLinks projectId={parseInt(projectId)} />
               </div>
             </TabsContent>
 
             {/* Expenses Tab */}
             <TabsContent value="expenses" className="mt-6">
               <ProjectExpensesTab
-                projectId={projectId}
+                projectId={parseInt(projectId)}
                 canManageExpenses={canManageTasks}
               />
             </TabsContent>

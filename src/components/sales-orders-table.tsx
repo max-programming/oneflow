@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconPlus, IconPencil, IconTrash, IconCalendar } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCalendar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -42,7 +42,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -54,7 +53,6 @@ import {
 import {
   getSalesOrdersFn,
   createSalesOrderFn,
-  updateSalesOrderFn,
   deleteSalesOrderFn,
 } from "@/server/sales-orders";
 import { getCustomersFn } from "@/server/customer";
@@ -65,10 +63,12 @@ type SalesOrders = Awaited<ReturnType<typeof getSalesOrdersFn>>;
 function SalesOrderCreateDialog() {
   const [open, setOpen] = React.useState(false);
   const [orderDateOpen, setOrderDateOpen] = React.useState(false);
-  const [orderDate, setOrderDate] = React.useState<Date | undefined>(new Date());
+  const [orderDate, setOrderDate] = React.useState<Date | undefined>(
+    new Date(),
+  );
   const [formData, setFormData] = React.useState({
-    customerId: "",
-    projectId: "",
+    customerId: 0,
+    projectId: 0,
     description: "",
     amount: "",
     taxPercentage: "18",
@@ -90,7 +90,10 @@ function SalesOrderCreateDialog() {
     if (formData.projectId && projects) {
       const selectedProject = projects.find((p) => p.id === formData.projectId);
       if (selectedProject) {
-        setFormData((prev) => ({ ...prev, customerId: selectedProject.customerId }));
+        setFormData((prev) => ({
+          ...prev,
+          customerId: selectedProject.customerId,
+        }));
       }
     }
   }, [formData.projectId, projects]);
@@ -98,8 +101,8 @@ function SalesOrderCreateDialog() {
   React.useEffect(() => {
     if (!open) {
       setFormData({
-        customerId: "",
-        projectId: "",
+        customerId: 0,
+        projectId: 0,
         description: "",
         amount: "",
         taxPercentage: "18",
@@ -154,13 +157,38 @@ function SalesOrderCreateDialog() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="customer" className="text-right">
+              Customer *
+            </Label>
+            <Select
+              value={formData.customerId.toString()}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  customerId: parseInt(value),
+                }))
+              }
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select customer" />
+              </SelectTrigger>
+              <SelectContent>
+                {customers?.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id.toString()}>
+                    {customer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="project" className="text-right">
               Project
             </Label>
             <Select
-              value={formData.projectId}
+              value={formData.projectId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, projectId: value }))
+                setFormData((prev) => ({ ...prev, projectId: parseInt(value) }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -168,7 +196,7 @@ function SalesOrderCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
                   </SelectItem>
                 ))}
@@ -180,18 +208,25 @@ function SalesOrderCreateDialog() {
               Customer *
             </Label>
             <Select
-              value={formData.customerId}
+              value={formData.customerId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, customerId: value }))
+                setFormData((prev) => ({
+                  ...prev,
+                  customerId: parseInt(value),
+                }))
               }
               disabled={!!formData.projectId}
             >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder={formData.projectId ? "From project" : "Select customer"} />
+                <SelectValue
+                  placeholder={
+                    formData.projectId ? "From project" : "Select customer"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {customers?.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
+                  <SelectItem key={customer.id} value={customer.id.toString()}>
                     {customer.name}
                   </SelectItem>
                 ))}
@@ -369,9 +404,7 @@ export function SalesOrdersTable() {
   React.useEffect(() => {
     if (isError) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to load sales orders",
+        error instanceof Error ? error.message : "Failed to load sales orders",
       );
     }
   }, [isError, error]);
@@ -413,7 +446,9 @@ export function SalesOrdersTable() {
             ) : (
               salesOrders.map((so) => (
                 <TableRow key={so.id}>
-                  <TableCell className="font-medium">{so.orderNumber}</TableCell>
+                  <TableCell className="font-medium">
+                    {so.orderNumber}
+                  </TableCell>
                   <TableCell>{so.customerName}</TableCell>
                   <TableCell>{so.projectName || "-"}</TableCell>
                   <TableCell>

@@ -1,5 +1,10 @@
 import * as React from "react";
-import { IconPlus, IconEdit, IconTrash, IconCalendar } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconEdit,
+  IconTrash,
+  IconCalendar,
+} from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -60,7 +65,10 @@ import {
 import { getVendorsFn } from "@/server/vendors";
 import { getProjectsFn } from "@/server/projects";
 import { getPurchaseOrdersFn } from "@/server/purchase-orders";
-import { getPaymentBadgeVariant, getPaymentStatusMessage } from "@/lib/financial-utils";
+import {
+  getPaymentBadgeVariant,
+  getPaymentStatusMessage,
+} from "@/lib/financial-utils";
 
 type VendorBills = Awaited<ReturnType<typeof getVendorBillsFn>>;
 
@@ -70,12 +78,12 @@ function VendorBillCreateDialog() {
   const [dueDateOpen, setDueDateOpen] = React.useState(false);
   const [billDate, setBillDate] = React.useState<Date | undefined>(new Date());
   const [dueDate, setDueDate] = React.useState<Date | undefined>(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   );
   const [formData, setFormData] = React.useState({
-    vendorId: "",
-    projectId: "",
-    purchaseOrderId: "",
+    vendorId: 0,
+    projectId: 0,
+    purchaseOrderId: 0,
     description: "",
     amount: "",
     taxPercentage: "18",
@@ -98,31 +106,18 @@ function VendorBillCreateDialog() {
     queryFn: () => getPurchaseOrdersFn(),
   });
 
-
-  // Auto-fill vendor, project, and amount when PO is selected
-  React.useEffect(() => {
-    if (formData.purchaseOrderId && purchaseOrders) {
-      const selectedPO = purchaseOrders.find(
-        (po) => po.id === parseInt(formData.purchaseOrderId)
-      );
-      if (selectedPO) {
-        setFormData((prev) => ({
-          ...prev,
-          vendorId: selectedPO.vendorId.toString(),
-          projectId: selectedPO.projectId || "",
-          amount: selectedPO.totalAmount,
-          description: selectedPO.description || "",
-        }));
-      }
-    }
-  }, [formData.purchaseOrderId, purchaseOrders]);
+  // Filter purchase orders by selected vendor
+  const filteredPurchaseOrders = React.useMemo(() => {
+    if (!purchaseOrders || !formData.vendorId) return [];
+    return purchaseOrders.filter((po) => po.vendorId === formData.vendorId);
+  }, [purchaseOrders, formData.vendorId]);
 
   React.useEffect(() => {
     if (!open) {
       setFormData({
-        vendorId: "",
-        projectId: "",
-        purchaseOrderId: "",
+        vendorId: 0,
+        projectId: 0,
+        purchaseOrderId: 0,
         description: "",
         amount: "",
         taxPercentage: "18",
@@ -133,6 +128,10 @@ function VendorBillCreateDialog() {
     }
   }, [open]);
 
+  // Reset PO selection when vendor changes
+  React.useEffect(() => {
+    setFormData((prev) => ({ ...prev, purchaseOrderId: 0 }));
+  }, [formData.vendorId]);
 
   const createMutation = useMutation({
     mutationFn: createVendorBillFn,
@@ -157,10 +156,10 @@ function VendorBillCreateDialog() {
     createMutation.mutate({
       data: {
         ...formData,
-        vendorId: parseInt(formData.vendorId),
+        vendorId: formData.vendorId,
         projectId: formData.projectId || null,
         purchaseOrderId: formData.purchaseOrderId
-          ? parseInt(formData.purchaseOrderId)
+          ? formData.purchaseOrderId
           : null,
         billDate: billDate.toISOString().split("T")[0],
         dueDate: dueDate.toISOString().split("T")[0],
@@ -189,9 +188,12 @@ function VendorBillCreateDialog() {
               Purchase Order
             </Label>
             <Select
-              value={formData.purchaseOrderId}
+              value={formData.purchaseOrderId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, purchaseOrderId: value }))
+                setFormData((prev) => ({
+                  ...prev,
+                  purchaseOrderId: parseInt(value),
+                }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -200,7 +202,8 @@ function VendorBillCreateDialog() {
               <SelectContent>
                 {purchaseOrders?.map((po) => (
                   <SelectItem key={po.id} value={po.id.toString()}>
-                    {po.poNumber} - ₹{parseFloat(po.totalAmount).toLocaleString()}
+                    {po.poNumber} - ₹
+                    {parseFloat(po.totalAmount).toLocaleString()}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -211,14 +214,18 @@ function VendorBillCreateDialog() {
               Vendor *
             </Label>
             <Select
-              value={formData.vendorId}
+              value={formData.vendorId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, vendorId: value }))
+                setFormData((prev) => ({ ...prev, vendorId: parseInt(value) }))
               }
               disabled={!!formData.purchaseOrderId}
             >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder={formData.purchaseOrderId ? "From PO" : "Select vendor"} />
+                <SelectValue
+                  placeholder={
+                    formData.purchaseOrderId ? "From PO" : "Select vendor"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {vendors?.map((vendor) => (
@@ -234,19 +241,51 @@ function VendorBillCreateDialog() {
               Project
             </Label>
             <Select
-              value={formData.projectId}
+              value={formData.projectId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, projectId: value }))
+                setFormData((prev) => ({ ...prev, projectId: parseInt(value) }))
               }
               disabled={!!formData.purchaseOrderId}
             >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder={formData.purchaseOrderId ? "From PO" : "Select project (optional)"} />
+                <SelectValue
+                  placeholder={
+                    formData.purchaseOrderId
+                      ? "From PO"
+                      : "Select project (optional)"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="purchaseOrder" className="text-right">
+              Purchase Order
+            </Label>
+            <Select
+              value={formData.purchaseOrderId.toString()}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  purchaseOrderId: parseInt(value),
+                }))
+              }
+              disabled={!formData.vendorId}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select PO (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredPurchaseOrders?.map((po) => (
+                  <SelectItem key={po.id} value={po.id.toString()}>
+                    {po.poNumber} - ₹{po.totalAmount.toLocaleString()}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -291,7 +330,10 @@ function VendorBillCreateDialog() {
             </Label>
             <Popover open={billDateOpen} onOpenChange={setBillDateOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
                   {billDate ? (
                     billDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -323,7 +365,10 @@ function VendorBillCreateDialog() {
             </Label>
             <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
                   {dueDate ? (
                     dueDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -448,7 +493,10 @@ function EditBillDialog({ bill }: EditBillDialogProps) {
             <Label htmlFor="status" className="text-right">
               Status *
             </Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status}
+              onValueChange={(s) => setStatus(s as typeof status)}
+            >
               <SelectTrigger className="col-span-3">
                 <SelectValue />
               </SelectTrigger>
@@ -510,8 +558,8 @@ function VendorBillDeleteDialog({ bill }: VendorBillDeleteDialogProps) {
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the vendor
-            bill "{bill.billNumber}".
+            This action cannot be undone. This will permanently delete the
+            vendor bill "{bill.billNumber}".
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -549,7 +597,6 @@ export function VendorBillsTable() {
       );
     }
   }, [isError, error]);
-
 
   return (
     <div className="space-y-4">
@@ -589,14 +636,21 @@ export function VendorBillsTable() {
             ) : (
               bills.map((bill) => (
                 <TableRow key={bill.id}>
-                  <TableCell className="font-medium">{bill.billNumber}</TableCell>
+                  <TableCell className="font-medium">
+                    {bill.billNumber}
+                  </TableCell>
                   <TableCell>{bill.vendorName}</TableCell>
                   <TableCell>{bill.projectName || "-"}</TableCell>
                   <TableCell>
                     ₹{parseFloat(bill.totalAmount).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getPaymentBadgeVariant(bill.status, bill.dueDate)}>
+                    <Badge
+                      variant={getPaymentBadgeVariant(
+                        bill.status,
+                        bill.dueDate,
+                      )}
+                    >
                       {getPaymentStatusMessage(bill.status, bill.dueDate)}
                     </Badge>
                   </TableCell>

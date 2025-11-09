@@ -138,8 +138,8 @@ export function ProjectsListTable({
                 >
                   <TableCell className="font-medium py-4">
                     <Link
-                      to="/dashboard/projects/$projectId"
-                      params={{ projectId: project.id }}
+                      to="/dashboard/projects/PRJ-{$projectId}"
+                      params={{ projectId: project.id.toString() }}
                       className="hover:underline block"
                     >
                       <div className="w-52 overflow-hidden">

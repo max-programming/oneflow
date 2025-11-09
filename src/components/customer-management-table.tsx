@@ -222,7 +222,7 @@ function CustomerEditDialog({ customer }: CustomerEditDialogProps) {
 
   const updateCustomerMutation = useMutation({
     mutationFn: (data: {
-      customerId: string;
+      customerId: number;
       name?: string;
       email?: string;
       phone?: string;
@@ -332,7 +332,7 @@ function CustomerDeleteDialog({ customer }: CustomerDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteCustomerMutation = useMutation({
-    mutationFn: (customerId: string) =>
+    mutationFn: (customerId: number) =>
       deleteCustomerFn({ data: { customerId } }),
     onSuccess: () => {
       toast.success("Customer deleted successfully");

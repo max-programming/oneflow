@@ -34,13 +34,13 @@ import { updateProjectTaskFn } from "@/server/tasks";
 import type { TaskStatusEnum } from "@/db/schema";
 
 interface Task {
-  taskId: string;
+  taskId: number;
   taskName: string;
   taskDescription?: string | null;
   taskStartDate: string;
   taskDueDate: string;
   taskStatus: TaskStatusEnum;
-  projectId: string;
+  projectId: number;
   projectDeadlineDate?: string | null;
 }
 

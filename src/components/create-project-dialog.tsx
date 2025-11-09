@@ -9,13 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronRight,
-  PlusIcon,
-} from "lucide-react";
+import { CheckIcon, ChevronDownIcon, PlusIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
   Tags,
@@ -103,8 +97,6 @@ export function CreateProjectDialog({
   onOpenChange,
   triggerButton,
 }: CreateProjectDialogProps) {
-  const location = useLocation();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Form state
@@ -116,8 +108,8 @@ export function CreateProjectDialog({
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [deadlineOpen, setDeadlineOpen] = useState(false);
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
-  const [projectManager, setProjectManager] = useState<string>("");
-  const [customer, setCustomer] = useState<string>("");
+  const [projectManager, setProjectManager] = useState(0);
+  const [customer, setCustomer] = useState(0);
   const [status, setStatus] = useState<ProjectStatusEnum>("waiting-to-start");
   const [projectName, setProjectName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -136,13 +128,13 @@ export function CreateProjectDialog({
   // Format project managers and customers for combobox
   const userOptions =
     projectManagersData?.map((manager) => ({
-      value: manager.id,
+      value: manager.id.toString(),
       label: manager.name,
     })) || [];
 
   const customerOptions =
     customersData?.map((customer) => ({
-      value: customer.id,
+      value: customer.id.toString(),
       label: customer.name,
     })) || [];
 
@@ -197,8 +189,8 @@ export function CreateProjectDialog({
     setProjectName("");
     setDescription("");
     setSelected([]);
-    setProjectManager("");
-    setCustomer("");
+    setProjectManager(0);
+    setCustomer(0);
     setStatus("waiting-to-start");
     setStartDate(undefined);
     setDeadline(undefined);
@@ -248,12 +240,6 @@ export function CreateProjectDialog({
       },
     });
   }
-
-  const pathSegments = location.pathname.split("/").filter(Boolean);
-  const breadcrumbItems = pathSegments.map((segment, index) => {
-    const path = "/" + pathSegments.slice(0, index + 1).join("/");
-    return { segment, path };
-  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -356,8 +342,8 @@ export function CreateProjectDialog({
               <Combobox
                 data={userOptions}
                 type="Project Manager"
-                value={projectManager}
-                onValueChange={setProjectManager}
+                value={projectManager.toString()}
+                onValueChange={(value) => setProjectManager(parseInt(value))}
               >
                 <ComboboxTrigger
                   className="w-full"
@@ -387,8 +373,8 @@ export function CreateProjectDialog({
               <Combobox
                 data={customerOptions}
                 type="customer"
-                value={customer}
-                onValueChange={setCustomer}
+                value={customer.toString()}
+                onValueChange={(value) => setCustomer(parseInt(value))}
               >
                 <ComboboxTrigger
                   className="w-full"

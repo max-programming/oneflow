@@ -23,7 +23,7 @@ export const createExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid().optional().nullable(),
+      projectId: z.number().optional().nullable(),
       description: z.string().min(1, "Description is required"),
       category: z.string().optional(),
       amount: z.string().min(1, "Amount is required"),
@@ -77,9 +77,9 @@ export const getExpensesFn = createServerFn({ method: "GET" })
   .inputValidator(
     z
       .object({
-        projectId: z.uuid().optional(),
+        projectId: z.number().optional(),
         approvalStatus: z.enum(["pending", "approved", "rejected"]).optional(),
-        userId: z.uuid().optional(), // Filter by user who submitted
+        userId: z.number().optional(), // Filter by user who submitted
       })
       .optional(),
   )
@@ -193,7 +193,7 @@ export const updateExpenseFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       expenseId: z.number().int().positive("Invalid expense ID"),
-      projectId: z.uuid().optional().nullable(),
+      projectId: z.number().optional().nullable(),
       description: z.string().optional(),
       category: z.string().optional(),
       amount: z.string().optional(),
@@ -312,9 +312,7 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
     }
 
     if (expense.approvalStatus !== "pending") {
-      throw new Error(
-        `Expense has already been ${expense.approvalStatus}`,
-      );
+      throw new Error(`Expense has already been ${expense.approvalStatus}`);
     }
 
     // Verify user is the project manager or admin
@@ -419,9 +417,7 @@ export const rejectExpenseFn = createServerFn({ method: "POST" })
     }
 
     if (expense.approvalStatus !== "pending") {
-      throw new Error(
-        `Expense has already been ${expense.approvalStatus}`,
-      );
+      throw new Error(`Expense has already been ${expense.approvalStatus}`);
     }
 
     // Verify user is the project manager or admin
@@ -516,7 +512,7 @@ export const linkExpenseToProjectFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       expenseId: z.number().int().positive("Invalid expense ID"),
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -562,7 +558,7 @@ export const getMyExpensesFn = createServerFn({ method: "GET" })
     z
       .object({
         approvalStatus: z.enum(["pending", "approved", "rejected"]).optional(),
-        projectId: z.uuid().optional(),
+        projectId: z.number().optional(),
       })
       .optional(),
   )
@@ -620,7 +616,7 @@ export const getProjectExpensesFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
       approvalStatus: z.enum(["pending", "approved", "rejected"]).optional(),
     }),
   )

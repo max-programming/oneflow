@@ -102,13 +102,13 @@ export function ProjectFiltersBar({
   // Format options for comboboxes
   const managerOptions =
     projectManagersData?.map((pm) => ({
-      value: pm.id,
+      value: pm.id.toString(),
       label: pm.name,
     })) || [];
 
   const customerOptions =
     customersData?.map((cust) => ({
-      value: cust.id,
+      value: cust.id.toString(),
       label: cust.name,
     })) || [];
 

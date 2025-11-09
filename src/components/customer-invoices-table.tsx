@@ -73,9 +73,9 @@ function CustomerInvoiceCreateDialog() {
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   );
   const [formData, setFormData] = React.useState({
-    customerId: "",
-    projectId: "",
-    salesOrderId: "",
+    customerId: 0,
+    projectId: 0,
+    salesOrderId: 0,
     description: "",
     amount: "",
     taxPercentage: "18",
@@ -101,9 +101,9 @@ function CustomerInvoiceCreateDialog() {
   React.useEffect(() => {
     if (!open) {
       setFormData({
-        customerId: "",
-        projectId: "",
-        salesOrderId: "",
+        customerId: 0,
+        projectId: 0,
+        salesOrderId: 0,
         description: "",
         amount: "",
         taxPercentage: "18",
@@ -173,9 +173,12 @@ function CustomerInvoiceCreateDialog() {
               Customer *
             </Label>
             <Select
-              value={formData.customerId}
+              value={formData.customerId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, customerId: value }))
+                setFormData((prev) => ({
+                  ...prev,
+                  customerId: parseInt(value),
+                }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -183,7 +186,7 @@ function CustomerInvoiceCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {customers?.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
+                  <SelectItem key={customer.id} value={customer.id.toString()}>
                     {customer.name}
                   </SelectItem>
                 ))}
@@ -195,9 +198,9 @@ function CustomerInvoiceCreateDialog() {
               Project
             </Label>
             <Select
-              value={formData.projectId}
+              value={formData.projectId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, projectId: value }))
+                setFormData((prev) => ({ ...prev, projectId: parseInt(value) }))
               }
             >
               <SelectTrigger className="col-span-3">
@@ -205,7 +208,7 @@ function CustomerInvoiceCreateDialog() {
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
+                  <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
                   </SelectItem>
                 ))}
@@ -217,9 +220,12 @@ function CustomerInvoiceCreateDialog() {
               Sales Order
             </Label>
             <Select
-              value={formData.salesOrderId}
+              value={formData.salesOrderId.toString()}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, salesOrderId: value }))
+                setFormData((prev) => ({
+                  ...prev,
+                  salesOrderId: parseInt(value),
+                }))
               }
             >
               <SelectTrigger className="col-span-3">

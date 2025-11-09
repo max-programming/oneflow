@@ -1,5 +1,12 @@
 import * as React from "react";
-import { IconPlus, IconCheck, IconX, IconTrash, IconCalendar, IconFileInvoice } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconCheck,
+  IconX,
+  IconTrash,
+  IconCalendar,
+  IconFileInvoice,
+} from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -64,18 +71,20 @@ import {
 type ProjectExpenses = Awaited<ReturnType<typeof getProjectExpensesFn>>;
 
 interface ProjectExpensesTabProps {
-  projectId: string;
+  projectId: number;
   canManageExpenses: boolean; // PM or admin
 }
 
 interface ExpenseCreateDialogProps {
-  projectId: string;
+  projectId: number;
 }
 
 function ExpenseCreateDialog({ projectId }: ExpenseCreateDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [expenseDateOpen, setExpenseDateOpen] = React.useState(false);
-  const [expenseDate, setExpenseDate] = React.useState<Date | undefined>(new Date());
+  const [expenseDate, setExpenseDate] = React.useState<Date | undefined>(
+    new Date(),
+  );
   const [formData, setFormData] = React.useState({
     description: "",
     category: "",
@@ -103,7 +112,9 @@ function ExpenseCreateDialog({ projectId }: ExpenseCreateDialogProps) {
     onSuccess: () => {
       toast.success("Expense submitted successfully");
       setOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["project-expenses", projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-expenses", projectId],
+      });
     },
     onError: (error) => {
       toast.error(
@@ -215,7 +226,10 @@ function ExpenseCreateDialog({ projectId }: ExpenseCreateDialogProps) {
             </Label>
             <Popover open={expenseDateOpen} onOpenChange={setExpenseDateOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="col-span-3 justify-start font-normal">
+                <Button
+                  variant="outline"
+                  className="col-span-3 justify-start font-normal"
+                >
                   {expenseDate ? (
                     expenseDate.toLocaleDateString("en-US", {
                       month: "short",
@@ -278,10 +292,13 @@ function ExpenseCreateDialog({ projectId }: ExpenseCreateDialogProps) {
 
 interface ApproveExpenseDialogProps {
   expense: ProjectExpenses[number];
-  projectId: string;
+  projectId: number;
 }
 
-function ApproveExpenseDialog({ expense, projectId }: ApproveExpenseDialogProps) {
+function ApproveExpenseDialog({
+  expense,
+  projectId,
+}: ApproveExpenseDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [notes, setNotes] = React.useState("");
   const queryClient = useQueryClient();
@@ -297,7 +314,9 @@ function ApproveExpenseDialog({ expense, projectId }: ApproveExpenseDialogProps)
     onSuccess: () => {
       toast.success("Expense approved successfully");
       setOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["project-expenses", projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-expenses", projectId],
+      });
     },
     onError: (error) => {
       toast.error(
@@ -318,7 +337,11 @@ function ApproveExpenseDialog({ expense, projectId }: ApproveExpenseDialogProps)
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+        >
           <IconCheck className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -345,7 +368,9 @@ function ApproveExpenseDialog({ expense, projectId }: ApproveExpenseDialogProps)
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right font-medium">Billable:</Label>
               <div className="col-span-3">
-                <Badge variant="outline">Yes - Will create customer invoice</Badge>
+                <Badge variant="outline">
+                  Yes - Will create customer invoice
+                </Badge>
               </div>
             </div>
           )}
@@ -379,7 +404,7 @@ function ApproveExpenseDialog({ expense, projectId }: ApproveExpenseDialogProps)
 
 interface RejectExpenseDialogProps {
   expense: ProjectExpenses[number];
-  projectId: string;
+  projectId: number;
 }
 
 function RejectExpenseDialog({ expense, projectId }: RejectExpenseDialogProps) {
@@ -398,7 +423,9 @@ function RejectExpenseDialog({ expense, projectId }: RejectExpenseDialogProps) {
     onSuccess: () => {
       toast.success("Expense rejected");
       setOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["project-expenses", projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-expenses", projectId],
+      });
     },
     onError: (error) => {
       toast.error(
@@ -424,7 +451,11 @@ function RejectExpenseDialog({ expense, projectId }: RejectExpenseDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
           <IconX className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -477,18 +508,19 @@ function RejectExpenseDialog({ expense, projectId }: RejectExpenseDialogProps) {
 
 interface ExpenseDeleteDialogProps {
   expense: ProjectExpenses[number];
-  projectId: string;
+  projectId: number;
 }
 
 function ExpenseDeleteDialog({ expense, projectId }: ExpenseDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (expenseId: number) =>
-      deleteExpenseFn({ data: { expenseId } }),
+    mutationFn: (expenseId: number) => deleteExpenseFn({ data: { expenseId } }),
     onSuccess: () => {
       toast.success("Expense deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["project-expenses", projectId] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-expenses", projectId],
+      });
     },
     onError: (error) => {
       toast.error(
@@ -504,7 +536,11 @@ function ExpenseDeleteDialog({ expense, projectId }: ExpenseDeleteDialogProps) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="hover:bg-red-50 hover:text-red-600">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="hover:bg-red-50 hover:text-red-600"
+        >
           <IconTrash className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>
@@ -531,7 +567,10 @@ function ExpenseDeleteDialog({ expense, projectId }: ExpenseDeleteDialogProps) {
   );
 }
 
-export function ProjectExpensesTab({ projectId, canManageExpenses }: ProjectExpensesTabProps) {
+export function ProjectExpensesTab({
+  projectId,
+  canManageExpenses,
+}: ProjectExpensesTabProps) {
   const {
     data: expenses,
     isLoading,
@@ -563,10 +602,14 @@ export function ProjectExpensesTab({ projectId, canManageExpenses }: ProjectExpe
 
   // Calculate summary stats
   const totalExpenses = expenses?.length || 0;
-  const pendingExpenses = expenses?.filter(e => e.approvalStatus === "pending").length || 0;
-  const approvedExpenses = expenses?.filter(e => e.approvalStatus === "approved").length || 0;
-  const totalAmount = expenses?.reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
-  const approvedAmount = expenses?.filter(e => e.approvalStatus === "approved").reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+  const pendingExpenses =
+    expenses?.filter((e) => e.approvalStatus === "pending").length || 0;
+  const approvedExpenses =
+    expenses?.filter((e) => e.approvalStatus === "approved").length || 0;
+  const approvedAmount =
+    expenses
+      ?.filter((e) => e.approvalStatus === "approved")
+      .reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
 
   return (
     <div className="space-y-6">
@@ -581,19 +624,25 @@ export function ProjectExpensesTab({ projectId, canManageExpenses }: ProjectExpe
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Pending Approval</CardDescription>
-            <CardTitle className="text-2xl text-yellow-600">{pendingExpenses}</CardTitle>
+            <CardTitle className="text-2xl text-yellow-600">
+              {pendingExpenses}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Approved</CardDescription>
-            <CardTitle className="text-2xl text-green-600">{approvedExpenses}</CardTitle>
+            <CardTitle className="text-2xl text-green-600">
+              {approvedExpenses}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Total Amount (Approved)</CardDescription>
-            <CardTitle className="text-2xl">₹{approvedAmount.toLocaleString()}</CardTitle>
+            <CardTitle className="text-2xl">
+              ₹{approvedAmount.toLocaleString()}
+            </CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -654,7 +703,9 @@ export function ProjectExpensesTab({ projectId, canManageExpenses }: ProjectExpe
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="text-sm">{expense.userName}</span>
-                          <span className="text-xs text-muted-foreground">{expense.userEmail}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {expense.userEmail}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="max-w-[200px]">
@@ -668,7 +719,9 @@ export function ProjectExpensesTab({ projectId, canManageExpenses }: ProjectExpe
                       </TableCell>
                       <TableCell>
                         {expense.billable ? (
-                          <Badge variant="outline" className="bg-blue-50">Billable</Badge>
+                          <Badge variant="outline" className="bg-blue-50">
+                            Billable
+                          </Badge>
                         ) : (
                           <Badge variant="secondary">Non-billable</Badge>
                         )}
@@ -683,10 +736,14 @@ export function ProjectExpensesTab({ projectId, canManageExpenses }: ProjectExpe
                             className="flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline"
                           >
                             <IconFileInvoice className="h-3 w-3" />
-                            <span className="text-xs">{expense.invoiceNumber}</span>
+                            <span className="text-xs">
+                              {expense.invoiceNumber}
+                            </span>
                           </Link>
                         ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
+                          <span className="text-xs text-muted-foreground">
+                            -
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm">
@@ -694,13 +751,23 @@ export function ProjectExpensesTab({ projectId, canManageExpenses }: ProjectExpe
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {expense.approvalStatus === "pending" && canManageExpenses && (
-                            <>
-                              <ApproveExpenseDialog expense={expense} projectId={projectId} />
-                              <RejectExpenseDialog expense={expense} projectId={projectId} />
-                            </>
-                          )}
-                          <ExpenseDeleteDialog expense={expense} projectId={projectId} />
+                          {expense.approvalStatus === "pending" &&
+                            canManageExpenses && (
+                              <>
+                                <ApproveExpenseDialog
+                                  expense={expense}
+                                  projectId={projectId}
+                                />
+                                <RejectExpenseDialog
+                                  expense={expense}
+                                  projectId={projectId}
+                                />
+                              </>
+                            )}
+                          <ExpenseDeleteDialog
+                            expense={expense}
+                            projectId={projectId}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

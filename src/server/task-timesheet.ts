@@ -16,8 +16,8 @@ export const createTimesheetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.string().uuid("Invalid project ID"),
-      taskId: z.string().uuid("Invalid task ID"),
+      projectId: z.number(),
+      taskId: z.number(),
       startTime: z.string().datetime("Invalid ISO datetime string"),
       endTime: z.string().datetime("Invalid ISO datetime string"),
       notes: z.string().optional(),
@@ -116,7 +116,7 @@ export const getTaskTimesheetsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      taskId: z.string().uuid("Invalid task ID"),
+      taskId: z.number(),
     }),
   )
   .handler(async ({ data }) => {
@@ -151,7 +151,7 @@ export const updateTimesheetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      timesheetId: z.string().uuid("Invalid timesheet ID"),
+      timesheetId: z.number(),
       startTime: z.string().datetime("Invalid ISO datetime string").optional(),
       endTime: z.string().datetime("Invalid ISO datetime string").optional(),
       notes: z.string().optional(),
@@ -222,8 +222,14 @@ export const updateTimesheetFn = createServerFn({ method: "POST" })
         and(
           eq(projectTaskTimesheets.userId, session.user.id),
           not(eq(projectTaskTimesheets.id, data.timesheetId)),
-          lt(sql`${finalStartTime.toISOString()}`, projectTaskTimesheets.endTime),
-          gt(sql`${finalEndTime.toISOString()}`, projectTaskTimesheets.startTime),
+          lt(
+            sql`${finalStartTime.toISOString()}`,
+            projectTaskTimesheets.endTime,
+          ),
+          gt(
+            sql`${finalEndTime.toISOString()}`,
+            projectTaskTimesheets.startTime,
+          ),
         ),
       )
       .limit(1);
@@ -252,7 +258,7 @@ export const deleteTimesheetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      timesheetId: z.string().uuid("Invalid timesheet ID"),
+      timesheetId: z.number(),
     }),
   )
   .handler(async ({ data, context }) => {

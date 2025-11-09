@@ -24,7 +24,7 @@ interface KanbanColumnBase extends Record<string, unknown> {
 }
 
 interface TasksKanbanProps {
-  projectId: string;
+  projectId: number;
   highlightedTaskId?: string | null;
   onHighlightComplete?: () => void;
   isAdminOrProjectManager?: boolean;
@@ -277,8 +277,14 @@ export function TasksKanban({
 
       <KanbanProvider
         columns={KANBAN_COLUMNS}
-        data={localTasks.map((t) => ({ ...t, column: t.status }))}
-        onDataChange={(newTasks) => setLocalTasks(newTasks)}
+        data={localTasks.map((t) => ({
+          ...t,
+          column: t.status,
+          id: t.id.toString(),
+        }))}
+        onDataChange={(newTasks) =>
+          setLocalTasks(newTasks.map((t) => ({ ...t, id: parseInt(t.id) })))
+        }
         onDragEnd={handleDragEnd}
         className="h-full"
       >
@@ -299,7 +305,7 @@ export function TasksKanban({
               {(task) => (
                 <TaskCard
                   key={task.id}
-                  task={task as TaskData}
+                  task={task as unknown as TaskData}
                   isHighlighted={highlightedTaskId === task.id}
                   projectId={projectId}
                   onEdit={handleEditClick}

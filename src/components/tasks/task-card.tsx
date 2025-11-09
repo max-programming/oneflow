@@ -17,7 +17,7 @@ import { TaskDetailsDialog } from "./task-details-dialog";
 
 // Define base kanban item interface (compatible with KanbanItemProps)
 interface KanbanItemBase extends Record<string, unknown> {
-  id: string;
+  id: number;
   name: string;
   column: string;
 }
@@ -40,7 +40,7 @@ interface TaskCardProps {
   task: TaskData;
   isHighlighted?: boolean;
   className?: string;
-  projectId?: string;
+  projectId?: number;
   onEdit?: (task: TaskData) => void;
   onDelete?: (task: TaskData) => void;
   isAdminOrProjectManager?: boolean;
@@ -152,7 +152,7 @@ export function TaskCard({
         )}
       </div>
       <KanbanCard
-        id={task.id}
+        id={task.id.toString()}
         name={task.name}
         column={task.column}
         className={cn(

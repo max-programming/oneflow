@@ -38,8 +38,8 @@ interface NewTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   triggerButton?: React.ReactNode;
-  projectId: string;
-  onTaskCreated?: (taskId: string) => void;
+  projectId: number;
+  onTaskCreated?: (taskId: number) => void;
 }
 
 export function NewTaskDialog({
@@ -58,7 +58,7 @@ export function NewTaskDialog({
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
-  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+  const [selectedAssignees, setSelectedAssignees] = useState<number[]>([]);
 
   // Fetch project details to get the deadline
   const { data: projectData } = useQuery({
@@ -75,7 +75,7 @@ export function NewTaskDialog({
   // Format users for selection
   const userOptions =
     usersData?.map((user) => ({
-      value: user.id,
+      value: user.id.toString(),
       label: user.name || user.email,
     })) || [];
 
@@ -104,7 +104,7 @@ export function NewTaskDialog({
     setSelectedAssignees([]);
   }
 
-  function handleAssigneeToggle(userId: string) {
+  function handleAssigneeToggle(userId: number) {
     setSelectedAssignees((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
@@ -162,7 +162,7 @@ export function NewTaskDialog({
   }
 
   const selectedUsers = userOptions.filter((user) =>
-    selectedAssignees.includes(user.value),
+    selectedAssignees.includes(parseInt(user.value)),
   );
 
   return (
@@ -357,7 +357,9 @@ export function NewTaskDialog({
                           variant="ghost"
                           size="sm"
                           className="h-4 w-4 p-0 hover:bg-secondary-foreground/20"
-                          onClick={() => handleAssigneeToggle(user.value)}
+                          onClick={() =>
+                            handleAssigneeToggle(parseInt(user.value))
+                          }
                           disabled={createTaskMutation.isPending}
                         >
                           <X className="h-3 w-3" />
@@ -373,7 +375,7 @@ export function NewTaskDialog({
                   type="assignee"
                   value=""
                   onValueChange={(value) => {
-                    if (value) handleAssigneeToggle(value);
+                    if (value) handleAssigneeToggle(parseInt(value));
                   }}
                 >
                   <ComboboxTrigger
@@ -393,7 +395,9 @@ export function NewTaskDialog({
                           <ComboboxItem key={user.value} value={user.value}>
                             <div className="flex items-center justify-between w-full">
                               <span>{user.label}</span>
-                              {selectedAssignees.includes(user.value) && (
+                              {selectedAssignees.includes(
+                                parseInt(user.value),
+                              ) && (
                                 <CheckIcon className="h-4 w-4 text-primary" />
                               )}
                             </div>

@@ -16,7 +16,7 @@ export const getProjectFinancialSummaryFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -116,7 +116,7 @@ export const getProjectFinancialCountsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {

@@ -10,10 +10,9 @@ import {
   IconFileText,
   IconCash,
 } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
 
 interface ProjectFinancialLinksProps {
-  projectId: string;
+  projectId: number;
 }
 
 export function ProjectFinancialLinks({

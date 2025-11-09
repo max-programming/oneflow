@@ -108,8 +108,8 @@ export function EditProjectDialog({
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [deadlineOpen, setDeadlineOpen] = useState(false);
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
-  const [projectManager, setProjectManager] = useState<string>("");
-  const [customer, setCustomer] = useState<string>("");
+  const [projectManager, setProjectManager] = useState(0);
+  const [customer, setCustomer] = useState(0);
   const [status, setStatus] = useState<ProjectStatusEnum>("waiting-to-start");
   const [projectName, setProjectName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -120,8 +120,8 @@ export function EditProjectDialog({
       setProjectName(project.name || "");
       setDescription(project.description || "");
       setStatus(project.status || "waiting-to-start");
-      setProjectManager(project.managerId || "");
-      setCustomer(project.customerId || "");
+      setProjectManager(project.managerId || 0);
+      setCustomer(project.customerId || 0);
 
       // Parse dates
       if (project.startDate) {
@@ -433,10 +433,13 @@ export function EditProjectDialog({
                 Project Manager <span className="text-destructive">*</span>
               </Label>
               <Combobox
-                data={userOptions}
+                data={userOptions.map((user) => ({
+                  value: user.value.toString(),
+                  label: user.label,
+                }))}
                 type="Project Manager"
-                value={projectManager}
-                onValueChange={setProjectManager}
+                value={projectManager.toString()}
+                onValueChange={(value) => setProjectManager(parseInt(value))}
               >
                 <ComboboxTrigger
                   className="w-full"
@@ -448,7 +451,10 @@ export function EditProjectDialog({
                   <ComboboxList>
                     <ComboboxGroup>
                       {userOptions.map((user) => (
-                        <ComboboxItem key={user.value} value={user.value}>
+                        <ComboboxItem
+                          key={user.value}
+                          value={user.value.toString()}
+                        >
                           {user.label}
                         </ComboboxItem>
                       ))}
@@ -464,10 +470,13 @@ export function EditProjectDialog({
                 Customer <span className="text-destructive">*</span>
               </Label>
               <Combobox
-                data={customerOptions}
+                data={customerOptions.map((customer) => ({
+                  value: customer.value.toString(),
+                  label: customer.label,
+                }))}
                 type="customer"
-                value={customer}
-                onValueChange={setCustomer}
+                value={customer.toString()}
+                onValueChange={(value) => setCustomer(parseInt(value))}
               >
                 <ComboboxTrigger
                   className="w-full"
@@ -481,7 +490,7 @@ export function EditProjectDialog({
                       {customerOptions.map((customerOption) => (
                         <ComboboxItem
                           key={customerOption.value}
-                          value={customerOption.value}
+                          value={customerOption.value.toString()}
                         >
                           {customerOption.label}
                         </ComboboxItem>

@@ -22,8 +22,8 @@ export const createSalesOrderFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      projectId: z.uuid().optional().nullable(),
-      customerId: z.uuid("Customer is required"),
+      projectId: z.number().optional().nullable(),
+      customerId: z.number("Customer is required"),
       description: z.string().optional(),
       amount: z.string().min(1, "Amount is required"),
       taxPercentage: z.string().default("0"),
@@ -73,7 +73,7 @@ export const getSalesOrdersFn = createServerFn({ method: "GET" })
   .inputValidator(
     z
       .object({
-        projectId: z.uuid().optional(),
+        projectId: z.number().optional(),
       })
       .optional(),
   )
@@ -165,8 +165,8 @@ export const updateSalesOrderFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       salesOrderId: z.number().int().positive("Invalid sales order ID"),
-      projectId: z.uuid().optional().nullable(),
-      customerId: z.uuid().optional(),
+      projectId: z.number().optional().nullable(),
+      customerId: z.number().optional(),
       description: z.string().optional(),
       amount: z.string().optional(),
       taxPercentage: z.string().optional(),
@@ -256,7 +256,7 @@ export const linkSalesOrderToProjectFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       salesOrderId: z.number().int().positive("Invalid sales order ID"),
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {

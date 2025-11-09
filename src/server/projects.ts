@@ -44,10 +44,10 @@ export const createProjectFn = createServerFn({ method: "POST" })
           "on-hold",
         ])
         .default("waiting-to-start"),
-      managerId: z.uuid("Invalid manager ID"),
+      managerId: z.number("Invalid manager ID"),
       startDate: z.string().optional(),
       deadlineDate: z.string().optional(),
-      customerId: z.uuid("Invalid customer ID"),
+      customerId: z.number("Invalid customer ID"),
       tags: z.array(z.string()).default([]),
     }),
   )
@@ -110,7 +110,7 @@ export const getProjectByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -152,7 +152,7 @@ export const updateProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
       name: z.string().min(1, "Project name is required").optional(),
       description: z.string().optional(),
       status: z
@@ -164,10 +164,10 @@ export const updateProjectFn = createServerFn({ method: "POST" })
           "on-hold",
         ])
         .optional(),
-      managerId: z.uuid("Invalid manager ID").optional(),
+      managerId: z.number("Invalid manager ID").optional(),
       startDate: z.string().optional(),
       deadlineDate: z.string().optional(),
-      customerId: z.uuid("Invalid customer ID").optional(),
+      customerId: z.number("Invalid customer ID").optional(),
       tags: z.array(z.string()).optional(),
     }),
   )
@@ -192,7 +192,7 @@ export const deleteProjectFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, projectManagerOrAdmin])
   .inputValidator(
     z.object({
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {
@@ -213,7 +213,7 @@ export const getProjectsPaginatedFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      cursor: z.string().optional(),
+      cursor: z.number().optional(),
       limit: z.number().default(12),
       query: z.string().optional(),
       manager: z.string().optional(),
@@ -282,12 +282,12 @@ export const getProjectsPaginatedFn = createServerFn({ method: "GET" })
 
     // Manager filter
     if (manager) {
-      filterConditions.push(eq(projects.managerId, manager));
+      filterConditions.push(eq(projects.managerId, parseInt(manager)));
     }
 
     // Customer filter
     if (customer) {
-      filterConditions.push(eq(projects.customerId, customer));
+      filterConditions.push(eq(projects.customerId, parseInt(customer)));
     }
 
     // Status filter

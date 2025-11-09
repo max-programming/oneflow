@@ -40,7 +40,7 @@ import {
   isPast,
   differenceInDays,
 } from "date-fns";
-import type { TaskStatusEnum } from "@/db/schema";
+import type { TaskStatusEnum, UserRole } from "@/db/schema";
 
 interface TasksListTableProps {
   limit?: number;
@@ -48,13 +48,13 @@ interface TasksListTableProps {
 }
 
 interface Task {
-  taskId: string;
+  taskId: number;
   taskName: string;
   taskDescription?: string | null;
   taskStartDate: string;
   taskDueDate: string;
   taskStatus: TaskStatusEnum;
-  projectId: string;
+  projectId: number;
   projectName: string;
   projectDeadlineDate?: string | null;
   assignees: any[];
@@ -123,7 +123,7 @@ export function TasksListTable({
       taskId,
       status,
     }: {
-      taskId: string;
+      taskId: number;
       status: TaskStatusEnum;
     }) => {
       return updateTaskStatusFn({ data: { taskId, status } });
@@ -292,8 +292,8 @@ export function TasksListTable({
                       </TableCell>
                       <TableCell>
                         <Link
-                          to="/dashboard/projects/$projectId"
-                          params={{ projectId: task.projectId }}
+                          to="/dashboard/projects/PRJ-{$projectId}"
+                          params={{ projectId: task.projectId.toString() }}
                           className="text-sm hover:underline"
                         >
                           {task.projectName}

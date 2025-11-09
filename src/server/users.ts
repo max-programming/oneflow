@@ -30,7 +30,7 @@ export const getUsersFn = createServerFn({ method: "GET" })
 export const updateUserRoleFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      userId: z.string(),
+      userId: z.number(),
       role: z.enum([
         "admin",
         "project-manager",
@@ -73,7 +73,7 @@ export const updateUserRoleFn = createServerFn({ method: "POST" })
 export const updateUserFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      userId: z.string(),
+      userId: z.number(),
       name: z.string().min(1, "Name is required").optional(),
       email: z.email().optional(),
       role: z
@@ -193,7 +193,7 @@ export const createUserFn = createServerFn({ method: "POST" })
 export const deleteUserFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      userId: z.string(),
+      userId: z.number(),
     }),
   )
   .middleware([authMiddleware, adminOnly])

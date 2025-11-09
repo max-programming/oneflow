@@ -13,9 +13,9 @@ import { deleteProjectTaskFn } from "@/server/tasks";
 import { toast } from "sonner";
 
 interface Task {
-  taskId: string;
+  taskId: number;
   taskName: string;
-  projectId: string;
+  projectId: number;
 }
 
 interface DeleteTaskDialogProps {

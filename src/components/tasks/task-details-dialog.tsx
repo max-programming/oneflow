@@ -64,9 +64,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 interface TaskDetailsDialogProps {
-  taskId: string;
+  taskId: number;
   taskName?: string;
-  projectId?: string;
+  projectId?: number;
 }
 
 // Helper function to format time to 12-hour format
@@ -192,7 +192,7 @@ export function TaskDetailsDialog({
 
   // Time tracking form state
   const [showTimeForm, setShowTimeForm] = useState(false);
-  const [editingTimesheetId, setEditingTimesheetId] = useState<string | null>(
+  const [editingTimesheetId, setEditingTimesheetId] = useState<number | null>(
     null,
   );
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -203,7 +203,7 @@ export function TaskDetailsDialog({
   const [notes, setNotes] = useState("");
 
   // Delete confirmation state
-  const [timesheetToDelete, setTimesheetToDelete] = useState<string | null>(
+  const [timesheetToDelete, setTimesheetToDelete] = useState<number | null>(
     null,
   );
 
@@ -339,7 +339,7 @@ export function TaskDetailsDialog({
     }
   };
 
-  const handleDeleteTimesheet = (timesheetId: string) => {
+  const handleDeleteTimesheet = (timesheetId: number) => {
     deleteTimesheetMutation.mutate({
       data: { timesheetId },
     });

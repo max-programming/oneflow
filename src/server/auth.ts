@@ -22,7 +22,8 @@ export const getSessionFn = createServerFn({ method: "GET" }).handler(
       .limit(1);
 
     if (!session) {
-      throw new Error("Invalid token");
+      // throw new Error("Invalid token");
+      return null;
     }
 
     const [user] = await db

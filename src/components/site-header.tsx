@@ -1,6 +1,6 @@
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { useLocation } from "@tanstack/react-router"
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useLocation } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
 export function SiteHeader() {
@@ -14,13 +14,18 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        {location.pathname.split('/').map((pathname, index) => (
-          <h1 className="text-base font-medium capitalize flex items-center gap-2" key={pathname}>
+        {location.pathname.split("/").map((pathname, index) => (
+          <h1
+            className="text-base font-medium capitalize flex items-center gap-2"
+            key={pathname}
+          >
             {pathname}
-            {(index < location.pathname.split('/').length - 1) && index !== 0 && <ChevronRight className="size-4" />}
+            {index < location.pathname.split("/").length - 1 && index !== 0 && (
+              <ChevronRight className="size-4" />
+            )}
           </h1>
         ))}
       </div>
     </header>
-  )
+  );
 }

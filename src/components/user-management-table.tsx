@@ -112,7 +112,7 @@ function UserEditDialog({ user }: UserEditDialogProps) {
 
   const updateUserMutation = useMutation({
     mutationFn: (data: {
-      userId: string;
+      userId: number;
       name?: string;
       email?: string;
       role?: UserRole;
@@ -388,7 +388,7 @@ function UserDeleteDialog({ user }: UserDeleteDialogProps) {
   const queryClient = useQueryClient();
 
   const deleteUserMutation = useMutation({
-    mutationFn: (userId: string) => deleteUserFn({ data: { userId } }),
+    mutationFn: (userId: number) => deleteUserFn({ data: { userId } }),
     onSuccess: () => {
       toast.success("User deleted successfully");
       // Invalidate users query to refetch data

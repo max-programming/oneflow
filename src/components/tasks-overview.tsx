@@ -66,13 +66,13 @@ interface TasksOverviewProps {
 }
 
 interface EditableTask {
-  taskId: string;
+  taskId: number;
   taskName: string;
   taskDescription?: string | null;
   taskStartDate: string;
   taskDueDate: string;
   taskStatus: TaskStatusEnum;
-  projectId: string;
+  projectId: number;
   projectDeadlineDate?: string | null;
 }
 
@@ -82,9 +82,9 @@ export function TasksOverview({
   const [currentPage, setCurrentPage] = React.useState(1);
   const [filter, setFilter] = React.useState<FilterType>("all");
   const [selectedTask, setSelectedTask] = React.useState<{
-    taskId: string;
+    taskId: number;
     taskName: string;
-    projectId: string;
+    projectId: number;
   } | null>(null);
 
   // State for edit/delete dialogs
@@ -171,7 +171,7 @@ export function TasksOverview({
       taskId,
       status,
     }: {
-      taskId: string;
+      taskId: number;
       status: TaskStatusEnum;
     }) => {
       return updateTaskStatusFn({
@@ -245,7 +245,7 @@ export function TasksOverview({
     },
   });
 
-  const handleStatusChange = (taskId: string, newStatus: TaskStatusEnum) => {
+  const handleStatusChange = (taskId: number, newStatus: TaskStatusEnum) => {
     updateStatusMutation.mutate({ taskId, status: newStatus });
   };
 
@@ -401,8 +401,8 @@ export function TasksOverview({
                   >
                     <TableCell>
                       <Link
-                        to="/dashboard/projects/$projectId"
-                        params={{ projectId: task.projectId }}
+                        to="/dashboard/projects/PRJ-{$projectId}"
+                        params={{ projectId: task.projectId.toString() }}
                         className="font-medium hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -416,8 +416,8 @@ export function TasksOverview({
                     </TableCell>
                     <TableCell>
                       <Link
-                        to="/dashboard/projects/$projectId"
-                        params={{ projectId: task.projectId }}
+                        to="/dashboard/projects/PRJ-{$projectId}"
+                        params={{ projectId: task.projectId.toString() }}
                         className="text-sm hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >

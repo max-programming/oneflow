@@ -1,6 +1,5 @@
 import {
   IconCalendar,
-  IconUser,
   IconBriefcase,
   IconMail,
   IconAlertCircle,
@@ -19,22 +18,24 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { ProjectStatusEnum } from "@/db/tables/projects";
+import { UserRole } from "@/db/tables/auth";
 
 interface TodaysTasksProps {
   tasks?: Array<{
-    taskId: string;
+    taskId: number;
     taskName: string;
     taskDescription: string | null;
     taskStartDate: string;
     taskDueDate: string;
-    projectId: string;
+    projectId: number;
     projectName: string;
-    projectStatus: string;
+    projectStatus: ProjectStatusEnum;
     assignees: Array<{
-      userId: string;
+      userId: number;
       userName: string;
       userEmail: string;
-      userRole: string;
+      userRole: UserRole;
     }>;
   }>;
   isLoading?: boolean;

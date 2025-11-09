@@ -22,7 +22,7 @@ export const createPurchaseOrderFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      projectId: z.uuid().optional().nullable(),
+      projectId: z.number().optional().nullable(),
       vendorId: z.number().int().positive("Vendor is required"),
       description: z.string().optional(),
       amount: z.string().min(1, "Amount is required"),
@@ -73,7 +73,7 @@ export const getPurchaseOrdersFn = createServerFn({ method: "GET" })
   .inputValidator(
     z
       .object({
-        projectId: z.uuid().optional(),
+        projectId: z.number().optional(),
       })
       .optional(),
   )
@@ -165,7 +165,7 @@ export const updatePurchaseOrderFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       purchaseOrderId: z.number().int().positive("Invalid purchase order ID"),
-      projectId: z.uuid().optional().nullable(),
+      projectId: z.number().optional().nullable(),
       vendorId: z.number().int().positive().optional(),
       description: z.string().optional(),
       amount: z.string().optional(),
@@ -256,7 +256,7 @@ export const linkPurchaseOrderToProjectFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       purchaseOrderId: z.number().int().positive("Invalid purchase order ID"),
-      projectId: z.uuid("Invalid project ID"),
+      projectId: z.number("Invalid project ID"),
     }),
   )
   .handler(async ({ data }) => {

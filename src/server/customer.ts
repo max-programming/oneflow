@@ -75,14 +75,16 @@ export const getCustomerByIdFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, allRoles])
   .inputValidator(
     z.object({
-      customerId: z.uuid("Invalid customer ID"),
+      customerId: z.number("Invalid customer ID"),
     }),
   )
   .handler(async ({ data }) => {
     const [customer] = await db
       .select()
       .from(customers)
-      .where(and(eq(customers.id, data.customerId), isNull(customers.deletedAt)))
+      .where(
+        and(eq(customers.id, data.customerId), isNull(customers.deletedAt)),
+      )
       .limit(1);
 
     if (!customer) {
@@ -97,7 +99,7 @@ export const updateCustomerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      customerId: z.uuid("Invalid customer ID"),
+      customerId: z.number("Invalid customer ID"),
       name: z.string().min(1, "Customer name is required").optional(),
       email: z.string().email().optional(),
       phone: z.string().min(1, "Phone number is required").optional(),
@@ -111,7 +113,12 @@ export const updateCustomerFn = createServerFn({ method: "POST" })
       const existingCustomer = await db
         .select()
         .from(customers)
-        .where(and(eq(customers.email, updateData.email), isNull(customers.deletedAt)))
+        .where(
+          and(
+            eq(customers.email, updateData.email),
+            isNull(customers.deletedAt),
+          ),
+        )
         .limit(1);
 
       if (
@@ -127,7 +134,12 @@ export const updateCustomerFn = createServerFn({ method: "POST" })
       const existingPhone = await db
         .select()
         .from(customers)
-        .where(and(eq(customers.phone, updateData.phone), isNull(customers.deletedAt)))
+        .where(
+          and(
+            eq(customers.phone, updateData.phone),
+            isNull(customers.deletedAt),
+          ),
+        )
         .limit(1);
 
       if (existingPhone.length > 0 && existingPhone[0].id !== customerId) {
@@ -153,14 +165,16 @@ export const deleteCustomerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .inputValidator(
     z.object({
-      customerId: z.uuid("Invalid customer ID"),
+      customerId: z.number("Invalid customer ID"),
     }),
   )
   .handler(async ({ data }) => {
     const [deletedCustomer] = await db
       .update(customers)
       .set({ deletedAt: new Date() })
-      .where(and(eq(customers.id, data.customerId), isNull(customers.deletedAt)))
+      .where(
+        and(eq(customers.id, data.customerId), isNull(customers.deletedAt)),
+      )
       .returning();
 
     if (!deletedCustomer) {

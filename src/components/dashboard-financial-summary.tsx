@@ -159,8 +159,8 @@ export function DashboardFinancialSummary() {
           className={cn(
             "overflow-hidden",
             isProfitable
-              ? "border-blue-200 dark:border-blue-900/30 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20"
-              : "border-red-200 dark:border-red-900/30 bg-gradient-to-br from-red-50/50 to-transparent dark:from-red-950/20",
+              ? "border-blue-200 dark:border-blue-900/30 bg-linear-to-br from-blue-50/50 to-transparent dark:from-blue-950/20"
+              : "border-red-200 dark:border-red-900/30 bg-linear-to-br from-red-50/50 to-transparent dark:from-red-950/20",
           )}
         >
           <CardContent className="p-6">
