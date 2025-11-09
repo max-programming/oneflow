@@ -20,43 +20,43 @@ export const getSalesFinanceDashboardFn = createServerFn({ method: "GET" })
       .select({
         totalInvoices: count(),
         totalAmount: sql<string>`COALESCE(SUM(${customerInvoices.totalAmount}), 0)`,
-        paidAmount: sql<string>`COALESCE(SUM(${customerInvoices.paidAmount}), 0)`,
+        paidAmount: sql<string>`COALESCE(SUM(CASE WHEN ${customerInvoices.status} = 'paid' THEN ${customerInvoices.totalAmount} ELSE 0 END), 0)`,
       })
       .from(customerInvoices)
       .where(isNull(customerInvoices.deletedAt));
 
-    // Get invoice count by payment status
-    const unpaidInvoices = await db
+    // Get invoice count by status
+    const draftInvoices = await db
       .select({ count: count() })
       .from(customerInvoices)
       .where(
         and(
           isNull(customerInvoices.deletedAt),
-          eq(customerInvoices.paymentStatus, "unpaid"),
+          eq(customerInvoices.status, "draft"),
         ),
       );
 
-    const partiallyPaidInvoices = await db
+    const sentInvoices = await db
       .select({ count: count() })
       .from(customerInvoices)
       .where(
         and(
           isNull(customerInvoices.deletedAt),
-          eq(customerInvoices.paymentStatus, "partially_paid"),
+          eq(customerInvoices.status, "sent"),
         ),
       );
 
-    const fullyPaidInvoices = await db
+    const paidInvoices = await db
       .select({ count: count() })
       .from(customerInvoices)
       .where(
         and(
           isNull(customerInvoices.deletedAt),
-          eq(customerInvoices.paymentStatus, "fully_paid"),
+          eq(customerInvoices.status, "paid"),
         ),
       );
 
-    // Get overdue invoices
+    // Get overdue invoices (not paid and past due date)
     const today = new Date().toISOString().split("T")[0];
     const overdueInvoices = await db
       .select({ count: count() })
@@ -65,8 +65,8 @@ export const getSalesFinanceDashboardFn = createServerFn({ method: "GET" })
         and(
           isNull(customerInvoices.deletedAt),
           or(
-            eq(customerInvoices.paymentStatus, "unpaid"),
-            eq(customerInvoices.paymentStatus, "partially_paid"),
+            eq(customerInvoices.status, "draft"),
+            eq(customerInvoices.status, "sent"),
           ),
           sql`${customerInvoices.dueDate} < ${today}`,
         ),
@@ -138,9 +138,9 @@ export const getSalesFinanceDashboardFn = createServerFn({ method: "GET" })
         total: invoiceStats[0]?.totalInvoices || 0,
         totalAmount: invoiceStats[0]?.totalAmount || "0",
         paidAmount: invoiceStats[0]?.paidAmount || "0",
-        unpaid: unpaidInvoices[0]?.count || 0,
-        partiallyPaid: partiallyPaidInvoices[0]?.count || 0,
-        fullyPaid: fullyPaidInvoices[0]?.count || 0,
+        draft: draftInvoices[0]?.count || 0,
+        sent: sentInvoices[0]?.count || 0,
+        paid: paidInvoices[0]?.count || 0,
         overdue: overdueInvoices[0]?.count || 0,
       },
       salesOrders: {
@@ -171,7 +171,7 @@ export const getMonthlyRevenueTrendFn = createServerFn({ method: "GET" })
       .select({
         month: sql<string>`TO_CHAR(${customerInvoices.invoiceDate}, 'YYYY-MM')`,
         totalRevenue: sql<string>`COALESCE(SUM(${customerInvoices.totalAmount}), 0)`,
-        paidRevenue: sql<string>`COALESCE(SUM(${customerInvoices.paidAmount}), 0)`,
+        paidRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${customerInvoices.status} = 'paid' THEN ${customerInvoices.totalAmount} ELSE 0 END), 0)`,
         invoiceCount: count(),
       })
       .from(customerInvoices)
@@ -209,7 +209,7 @@ export const getTopCustomersFn = createServerFn({ method: "GET" })
         customerName: customers.name,
         customerEmail: customers.email,
         totalRevenue: sql<string>`COALESCE(SUM(${customerInvoices.totalAmount}), 0)`,
-        paidAmount: sql<string>`COALESCE(SUM(${customerInvoices.paidAmount}), 0)`,
+        paidAmount: sql<string>`COALESCE(SUM(CASE WHEN ${customerInvoices.status} = 'paid' THEN ${customerInvoices.totalAmount} ELSE 0 END), 0)`,
         invoiceCount: count(customerInvoices.id),
       })
       .from(customers)
@@ -228,19 +228,19 @@ export const getTopCustomersFn = createServerFn({ method: "GET" })
     return topCustomers;
   });
 
-// Get payment status distribution for chart
+// Get status distribution for chart
 export const getPaymentStatusDistributionFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware, salesFinanceOrAdmin])
   .handler(async () => {
     const distribution = await db
       .select({
-        status: customerInvoices.paymentStatus,
+        status: customerInvoices.status,
         count: count(),
         totalAmount: sql<string>`COALESCE(SUM(${customerInvoices.totalAmount}), 0)`,
       })
       .from(customerInvoices)
       .where(isNull(customerInvoices.deletedAt))
-      .groupBy(customerInvoices.paymentStatus);
+      .groupBy(customerInvoices.status);
 
     return distribution;
   });

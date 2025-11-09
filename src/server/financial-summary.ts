@@ -24,7 +24,7 @@ export const getProjectFinancialSummaryFn = createServerFn({ method: "GET" })
     const revenueResult = await db
       .select({
         totalRevenue: sql<string>`COALESCE(SUM(${customerInvoices.totalAmount}), 0)`,
-        paidRevenue: sql<string>`COALESCE(SUM(${customerInvoices.paidAmount}), 0)`,
+        paidRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${customerInvoices.status} = 'paid' THEN ${customerInvoices.totalAmount} ELSE 0 END), 0)`,
         count: count(),
       })
       .from(customerInvoices)
@@ -45,7 +45,7 @@ export const getProjectFinancialSummaryFn = createServerFn({ method: "GET" })
     const vendorBillsCostResult = await db
       .select({
         totalCost: sql<string>`COALESCE(SUM(${vendorBills.totalAmount}), 0)`,
-        paidCost: sql<string>`COALESCE(SUM(${vendorBills.paidAmount}), 0)`,
+        paidCost: sql<string>`COALESCE(SUM(CASE WHEN ${vendorBills.status} = 'paid' THEN ${vendorBills.totalAmount} ELSE 0 END), 0)`,
         count: count(),
       })
       .from(vendorBills)
@@ -225,7 +225,7 @@ export const getAllProjectsFinancialSummaryFn = createServerFn({
     const [totalRevenueData] = await db
       .select({
         total: sql<string>`COALESCE(SUM(${customerInvoices.totalAmount}), 0)`,
-        paid: sql<string>`COALESCE(SUM(${customerInvoices.paidAmount}), 0)`,
+        paid: sql<string>`COALESCE(SUM(CASE WHEN ${customerInvoices.status} = 'paid' THEN ${customerInvoices.totalAmount} ELSE 0 END), 0)`,
       })
       .from(customerInvoices)
       .where(isNull(customerInvoices.deletedAt));

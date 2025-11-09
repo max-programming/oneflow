@@ -1,24 +1,23 @@
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import {
+  AlertCircle,
   DollarSign,
   FileText,
   ShoppingCart,
-  Users,
-  AlertCircle,
   TrendingUp,
+  Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface DashboardStats {
   invoices: {
     total: number;
     totalAmount: string;
     paidAmount: string;
-    unpaid: number;
-    partiallyPaid: number;
-    fullyPaid: number;
+    draft: number;
+    sent: number;
+    paid: number;
     overdue: number;
   };
   salesOrders: {
@@ -107,13 +106,13 @@ export function SalesFinanceStatsCards({
           <div className="text-2xl font-bold">{statistics.invoices.total}</div>
           <div className="flex items-center gap-1 mt-2 flex-wrap">
             <Badge variant="default" className="text-xs">
-              {statistics.invoices.fullyPaid} Paid
+              {statistics.invoices.paid} Paid
             </Badge>
             <Badge variant="secondary" className="text-xs">
-              {statistics.invoices.partiallyPaid} Partial
+              {statistics.invoices.sent} Sent
             </Badge>
-            <Badge variant="destructive" className="text-xs">
-              {statistics.invoices.unpaid} Unpaid
+            <Badge variant="outline" className="text-xs">
+              {statistics.invoices.draft} Draft
             </Badge>
           </div>
           {statistics.invoices.overdue > 0 && (
