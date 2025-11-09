@@ -14,7 +14,10 @@ import {
   authMiddleware,
   salesFinanceOrAdmin,
 } from "./auth-middleware";
-import { validateStatusTransition, canEditDocument } from "@/lib/financial-utils";
+import {
+  validateStatusTransition,
+  canEditDocument,
+} from "@/lib/financial-utils";
 
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
@@ -356,4 +359,43 @@ export const unlinkVendorBillFromProjectFn = createServerFn({ method: "POST" })
     }
 
     return updatedBill;
+  });
+
+// Get Project Vendor Bills - Get vendor bills for a specific project (for financial links)
+export const getProjectVendorBillsFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.number("Invalid project ID"),
+      limit: z.number().optional().default(5),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const projectBills = await db
+      .select({
+        id: vendorBills.id,
+        billNumber: vendorBills.billNumber,
+        vendorId: vendorBills.vendorId,
+        vendorName: vendors.name,
+        description: vendorBills.description,
+        amount: vendorBills.amount,
+        taxPercentage: vendorBills.taxPercentage,
+        totalAmount: vendorBills.totalAmount,
+        billDate: vendorBills.billDate,
+        dueDate: vendorBills.dueDate,
+        status: vendorBills.status,
+        createdAt: vendorBills.createdAt,
+      })
+      .from(vendorBills)
+      .leftJoin(vendors, eq(vendorBills.vendorId, vendors.id))
+      .where(
+        and(
+          eq(vendorBills.projectId, data.projectId),
+          isNull(vendorBills.deletedAt),
+        ),
+      )
+      .orderBy(desc(vendorBills.createdAt))
+      .limit(data.limit);
+
+    return projectBills;
   });

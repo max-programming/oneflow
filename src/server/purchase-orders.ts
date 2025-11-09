@@ -296,3 +296,40 @@ export const unlinkPurchaseOrderFromProjectFn = createServerFn({
 
     return updatedPurchaseOrder;
   });
+
+// Get Project Purchase Orders - Get purchase orders for a specific project (for financial links)
+export const getProjectPurchaseOrdersFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.number("Invalid project ID"),
+      limit: z.number().optional().default(5),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const projectPurchaseOrders = await db
+      .select({
+        id: purchaseOrders.id,
+        orderNumber: purchaseOrders.poNumber,
+        vendorId: purchaseOrders.vendorId,
+        vendorName: vendors.name,
+        description: purchaseOrders.description,
+        amount: purchaseOrders.amount,
+        taxPercentage: purchaseOrders.taxPercentage,
+        totalAmount: purchaseOrders.totalAmount,
+        orderDate: purchaseOrders.orderDate,
+        createdAt: purchaseOrders.createdAt,
+      })
+      .from(purchaseOrders)
+      .leftJoin(vendors, eq(purchaseOrders.vendorId, vendors.id))
+      .where(
+        and(
+          eq(purchaseOrders.projectId, data.projectId),
+          isNull(purchaseOrders.deletedAt),
+        ),
+      )
+      .orderBy(desc(purchaseOrders.createdAt))
+      .limit(data.limit);
+
+    return projectPurchaseOrders;
+  });

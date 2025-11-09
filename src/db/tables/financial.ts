@@ -173,10 +173,6 @@ export const expenses = pgTable("expenses", {
   description: text().notNull(),
   category: text(), // Optional: travel, tools, meals, etc.
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 })
-    .notNull()
-    .default("0"),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   expenseDate: date().notNull(),
   billable: boolean().notNull().default(false), // Can be charged to customer
   approvalStatus: expenseApprovalStatusEnum().notNull().default("pending"),

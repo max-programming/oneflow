@@ -65,7 +65,7 @@ export const getProjectFinancialSummaryFn = createServerFn({ method: "GET" })
     // Calculate total cost from approved expenses
     const expensesCostResult = await db
       .select({
-        totalCost: sql<string>`COALESCE(SUM(${expenses.totalAmount}), 0)`,
+        totalCost: sql<string>`COALESCE(SUM(${expenses.amount}), 0)`,
         count: count(),
       })
       .from(expenses)
@@ -180,7 +180,7 @@ export const getProjectFinancialCountsFn = createServerFn({ method: "GET" })
     const [expensesData] = await db
       .select({
         count: count(),
-        total: sql<string>`COALESCE(SUM(${expenses.totalAmount}), 0)`,
+        total: sql<string>`COALESCE(SUM(${expenses.amount}), 0)`,
       })
       .from(expenses)
       .where(
@@ -241,7 +241,7 @@ export const getAllProjectsFinancialSummaryFn = createServerFn({
     // Get total costs from approved expenses
     const [expensesCostData] = await db
       .select({
-        total: sql<string>`COALESCE(SUM(${expenses.totalAmount}), 0)`,
+        total: sql<string>`COALESCE(SUM(${expenses.amount}), 0)`,
       })
       .from(expenses)
       .where(

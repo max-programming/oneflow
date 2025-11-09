@@ -122,7 +122,7 @@ function ApproveExpenseDialog({ expense }: ApproveExpenseDialogProps) {
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right font-medium">Amount:</Label>
             <div className="col-span-3 text-lg font-semibold">
-              ₹{parseFloat(expense.totalAmount).toLocaleString()}
+              ₹{parseFloat(expense.amount).toLocaleString()}
             </div>
           </div>
           {expense.billable && (
@@ -237,7 +237,7 @@ function RejectExpenseDialog({ expense }: RejectExpenseDialogProps) {
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right font-medium">Amount:</Label>
             <div className="col-span-3 text-lg font-semibold">
-              ₹{parseFloat(expense.totalAmount).toLocaleString()}
+              ₹{parseFloat(expense.amount).toLocaleString()}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -293,7 +293,7 @@ function RouteComponent() {
 
   const totalPending = expenses?.length || 0;
   const totalAmount =
-    expenses?.reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+    expenses?.reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
   const billableCount = expenses?.filter((e) => e.billable).length || 0;
   const nonBillableCount = expenses?.filter((e) => !e.billable).length || 0;
 
@@ -435,7 +435,7 @@ function RouteComponent() {
                           </TableCell>
                           <TableCell>{expense.category || "-"}</TableCell>
                           <TableCell className="font-medium">
-                            ₹{parseFloat(expense.totalAmount).toLocaleString()}
+                            ₹{parseFloat(expense.amount).toLocaleString()}
                           </TableCell>
                           <TableCell>
                             {expense.billable ? (

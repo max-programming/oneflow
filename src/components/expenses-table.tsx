@@ -72,7 +72,6 @@ function ExpenseCreateDialog() {
     description: "",
     category: "",
     amount: "",
-    taxPercentage: "0",
     billable: false,
   });
   const queryClient = useQueryClient();
@@ -89,7 +88,6 @@ function ExpenseCreateDialog() {
         description: "",
         category: "",
         amount: "",
-        taxPercentage: "0",
         billable: false,
       });
       setExpenseDate(new Date());
@@ -205,24 +203,6 @@ function ExpenseCreateDialog() {
               }
               className="col-span-3"
               placeholder="Enter amount"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="tax" className="text-right">
-              Tax %
-            </Label>
-            <Input
-              id="tax"
-              type="number"
-              value={formData.taxPercentage}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  taxPercentage: e.target.value,
-                }))
-              }
-              className="col-span-3"
-              placeholder="Tax percentage"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -353,7 +333,7 @@ function ApproveExpenseDialog({ expense }: ApproveExpenseDialogProps) {
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right font-medium">Amount:</Label>
             <div className="col-span-3 text-lg font-semibold">
-              ₹{parseFloat(expense.totalAmount).toLocaleString()}
+              ₹{parseFloat(expense.amount).toLocaleString()}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -450,7 +430,7 @@ function RejectExpenseDialog({ expense }: RejectExpenseDialogProps) {
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right font-medium">Amount:</Label>
             <div className="col-span-3 text-lg font-semibold">
-              ₹{parseFloat(expense.totalAmount).toLocaleString()}
+              ₹{parseFloat(expense.amount).toLocaleString()}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -614,7 +594,7 @@ export function ExpensesTable() {
                   </TableCell>
                   <TableCell>{expense.projectName || "-"}</TableCell>
                   <TableCell>
-                    ₹{parseFloat(expense.totalAmount).toLocaleString()}
+                    ₹{parseFloat(expense.amount).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     {expense.billable ? (

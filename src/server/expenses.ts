@@ -10,14 +10,6 @@ import {
   salesFinanceOrAdmin,
 } from "./auth-middleware";
 
-// Helper function to calculate total amount
-function calculateTotal(amount: string, taxPercentage: string): string {
-  const baseAmount = parseFloat(amount);
-  const tax = parseFloat(taxPercentage);
-  const totalAmount = baseAmount + (baseAmount * tax) / 100;
-  return totalAmount.toFixed(2);
-}
-
 // Create Expense - All authenticated users can create
 export const createExpenseFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware, allRoles])
@@ -27,16 +19,12 @@ export const createExpenseFn = createServerFn({ method: "POST" })
       description: z.string().min(1, "Description is required"),
       category: z.string().optional(),
       amount: z.string().min(1, "Amount is required"),
-      taxPercentage: z.string().default("0"),
       expenseDate: z.string().min(1, "Expense date is required"),
       billable: z.boolean().default(false),
     }),
   )
   .handler(async ({ data, context }) => {
     const userId = context.user.id;
-
-    // Calculate total amount
-    const totalAmount = calculateTotal(data.amount, data.taxPercentage);
 
     // Insert first with a temporary expense number
     const [expense] = await db
@@ -48,8 +36,6 @@ export const createExpenseFn = createServerFn({ method: "POST" })
         description: data.description,
         category: data.category,
         amount: data.amount,
-        taxPercentage: data.taxPercentage,
-        totalAmount,
         expenseDate: data.expenseDate,
         billable: data.billable,
         approvalStatus: "pending",
@@ -110,8 +96,6 @@ export const getExpensesFn = createServerFn({ method: "GET" })
         description: expenses.description,
         category: expenses.category,
         amount: expenses.amount,
-        taxPercentage: expenses.taxPercentage,
-        totalAmount: expenses.totalAmount,
         expenseDate: expenses.expenseDate,
         billable: expenses.billable,
         approvalStatus: expenses.approvalStatus,
@@ -157,8 +141,6 @@ export const getExpenseByIdFn = createServerFn({ method: "GET" })
         description: expenses.description,
         category: expenses.category,
         amount: expenses.amount,
-        taxPercentage: expenses.taxPercentage,
-        totalAmount: expenses.totalAmount,
         expenseDate: expenses.expenseDate,
         billable: expenses.billable,
         approvalStatus: expenses.approvalStatus,
@@ -197,7 +179,6 @@ export const updateExpenseFn = createServerFn({ method: "POST" })
       description: z.string().optional(),
       category: z.string().optional(),
       amount: z.string().optional(),
-      taxPercentage: z.string().optional(),
       expenseDate: z.string().optional(),
       billable: z.boolean().optional(),
     }),
@@ -212,8 +193,6 @@ export const updateExpenseFn = createServerFn({ method: "POST" })
       .select({
         userId: expenses.userId,
         approvalStatus: expenses.approvalStatus,
-        amount: expenses.amount,
-        taxPercentage: expenses.taxPercentage,
       })
       .from(expenses)
       .where(eq(expenses.id, expenseId))
@@ -239,26 +218,6 @@ export const updateExpenseFn = createServerFn({ method: "POST" })
       userRole !== "sales-finance"
     ) {
       throw new Error("Cannot update expense that has been approved/rejected");
-    }
-
-    // If amount or tax is being updated, recalculate total
-    if (updateData.amount || updateData.taxPercentage) {
-      const finalAmount = updateData.amount || currentExpense.amount;
-      const finalTax = updateData.taxPercentage || currentExpense.taxPercentage;
-
-      const totalAmount = calculateTotal(finalAmount, finalTax);
-
-      const [updatedExpense] = await db
-        .update(expenses)
-        .set({ ...updateData, totalAmount })
-        .where(eq(expenses.id, expenseId))
-        .returning();
-
-      if (!updatedExpense) {
-        throw new Error("Failed to update expense");
-      }
-
-      return updatedExpense;
     }
 
     const [updatedExpense] = await db
@@ -295,8 +254,6 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
         projectId: expenses.projectId,
         description: expenses.description,
         amount: expenses.amount,
-        taxPercentage: expenses.taxPercentage,
-        totalAmount: expenses.totalAmount,
         billable: expenses.billable,
         approvalStatus: expenses.approvalStatus,
         managerId: projects.managerId,
@@ -335,7 +292,7 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
       dueDate.setDate(dueDate.getDate() + 30);
       const dueDateStr = dueDate.toISOString().split("T")[0];
 
-      // Create customer invoice
+      // Create customer invoice (using amount directly, no tax)
       const [tempInvoice] = await db
         .insert(customerInvoices)
         .values({
@@ -344,8 +301,8 @@ export const approveExpenseFn = createServerFn({ method: "POST" })
           customerId: expense.customerId,
           description: `Billable Expense - ${expense.expenseNumber}: ${expense.description}`,
           amount: expense.amount,
-          taxPercentage: expense.taxPercentage,
-          totalAmount: expense.totalAmount,
+          taxPercentage: "0",
+          totalAmount: expense.amount,
           invoiceDate: today,
           dueDate: dueDateStr,
           status: "draft",
@@ -586,8 +543,6 @@ export const getMyExpensesFn = createServerFn({ method: "GET" })
         description: expenses.description,
         category: expenses.category,
         amount: expenses.amount,
-        taxPercentage: expenses.taxPercentage,
-        totalAmount: expenses.totalAmount,
         expenseDate: expenses.expenseDate,
         billable: expenses.billable,
         approvalStatus: expenses.approvalStatus,
@@ -642,8 +597,6 @@ export const getProjectExpensesFn = createServerFn({ method: "GET" })
         description: expenses.description,
         category: expenses.category,
         amount: expenses.amount,
-        taxPercentage: expenses.taxPercentage,
-        totalAmount: expenses.totalAmount,
         expenseDate: expenses.expenseDate,
         billable: expenses.billable,
         approvalStatus: expenses.approvalStatus,
@@ -701,8 +654,6 @@ export const getExpensesPendingMyApprovalFn = createServerFn({
         description: expenses.description,
         category: expenses.category,
         amount: expenses.amount,
-        taxPercentage: expenses.taxPercentage,
-        totalAmount: expenses.totalAmount,
         expenseDate: expenses.expenseDate,
         billable: expenses.billable,
         approvalStatus: expenses.approvalStatus,

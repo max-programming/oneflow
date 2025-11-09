@@ -294,3 +294,40 @@ export const unlinkSalesOrderFromProjectFn = createServerFn({ method: "POST" })
 
     return updatedSalesOrder;
   });
+
+// Get Project Sales Orders - Get sales orders for a specific project (for financial links)
+export const getProjectSalesOrdersFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.number("Invalid project ID"),
+      limit: z.number().optional().default(5),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const projectSalesOrders = await db
+      .select({
+        id: salesOrders.id,
+        orderNumber: salesOrders.orderNumber,
+        customerId: salesOrders.customerId,
+        customerName: customers.name,
+        description: salesOrders.description,
+        amount: salesOrders.amount,
+        taxPercentage: salesOrders.taxPercentage,
+        totalAmount: salesOrders.totalAmount,
+        orderDate: salesOrders.orderDate,
+        createdAt: salesOrders.createdAt,
+      })
+      .from(salesOrders)
+      .leftJoin(customers, eq(salesOrders.customerId, customers.id))
+      .where(
+        and(
+          eq(salesOrders.projectId, data.projectId),
+          isNull(salesOrders.deletedAt),
+        ),
+      )
+      .orderBy(desc(salesOrders.createdAt))
+      .limit(data.limit);
+
+    return projectSalesOrders;
+  });

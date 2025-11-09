@@ -71,7 +71,6 @@ function ExpenseCreateDialog() {
     description: "",
     category: "",
     amount: "",
-    taxPercentage: "0",
     billable: false,
   });
   const queryClient = useQueryClient();
@@ -88,7 +87,6 @@ function ExpenseCreateDialog() {
         description: "",
         category: "",
         amount: "",
-        taxPercentage: "0",
         billable: false,
       });
       setExpenseDate(new Date());
@@ -207,25 +205,6 @@ function ExpenseCreateDialog() {
               }
               className="col-span-3"
               placeholder="Enter amount"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="tax" className="text-right">
-              Tax %
-            </Label>
-            <Input
-              id="tax"
-              type="number"
-              step="0.01"
-              value={formData.taxPercentage}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  taxPercentage: e.target.value,
-                }))
-              }
-              className="col-span-3"
-              placeholder="Tax percentage (default: 0)"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -395,7 +374,7 @@ function ExpensesTable({
                 </TableCell>
                 <TableCell>{expense.category || "-"}</TableCell>
                 <TableCell>
-                  ₹{parseFloat(expense.totalAmount).toLocaleString()}
+                  ₹{parseFloat(expense.amount).toLocaleString()}
                 </TableCell>
                 <TableCell>
                   {expense.billable ? (
@@ -461,11 +440,11 @@ function RouteComponent() {
   const rejectedExpenses =
     allExpenses?.filter((e) => e.approvalStatus === "rejected").length || 0;
   const totalAmount =
-    allExpenses?.reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+    allExpenses?.reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
   const approvedAmount =
     allExpenses
       ?.filter((e) => e.approvalStatus === "approved")
-      .reduce((sum, e) => sum + parseFloat(e.totalAmount), 0) || 0;
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
 
   return (
     <div className="flex flex-1 flex-col">

@@ -14,7 +14,10 @@ import {
   authMiddleware,
   salesFinanceOrAdmin,
 } from "./auth-middleware";
-import { validateStatusTransition, canEditDocument } from "@/lib/financial-utils";
+import {
+  validateStatusTransition,
+  canEditDocument,
+} from "@/lib/financial-utils";
 
 // Helper function to calculate total amount
 function calculateTotal(amount: string, taxPercentage: string): string {
@@ -360,4 +363,43 @@ export const unlinkCustomerInvoiceFromProjectFn = createServerFn({
     }
 
     return updatedInvoice;
+  });
+
+// Get Project Customer Invoices - Get customer invoices for a specific project (for financial links)
+export const getProjectCustomerInvoicesFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      projectId: z.number("Invalid project ID"),
+      limit: z.number().optional().default(5),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const projectInvoices = await db
+      .select({
+        id: customerInvoices.id,
+        invoiceNumber: customerInvoices.invoiceNumber,
+        customerId: customerInvoices.customerId,
+        customerName: customers.name,
+        description: customerInvoices.description,
+        amount: customerInvoices.amount,
+        taxPercentage: customerInvoices.taxPercentage,
+        totalAmount: customerInvoices.totalAmount,
+        invoiceDate: customerInvoices.invoiceDate,
+        dueDate: customerInvoices.dueDate,
+        status: customerInvoices.status,
+        createdAt: customerInvoices.createdAt,
+      })
+      .from(customerInvoices)
+      .leftJoin(customers, eq(customerInvoices.customerId, customers.id))
+      .where(
+        and(
+          eq(customerInvoices.projectId, data.projectId),
+          isNull(customerInvoices.deletedAt),
+        ),
+      )
+      .orderBy(desc(customerInvoices.createdAt))
+      .limit(data.limit);
+
+    return projectInvoices;
   });
