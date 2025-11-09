@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
+import { GlobalSearch } from "@/components/global-search";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
@@ -27,6 +28,7 @@ function RouteComponent() {
         <SiteHeader />
         <Outlet />
       </SidebarInset>
+      <GlobalSearch />
     </SidebarProvider>
   );
 }

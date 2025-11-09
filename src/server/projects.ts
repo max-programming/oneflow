@@ -19,6 +19,7 @@ import {
   lte,
   arrayOverlaps,
   SQL,
+  sql,
   inArray,
 } from "drizzle-orm";
 import { z } from "zod";
@@ -97,6 +98,19 @@ export const getProjectsFn = createServerFn({ method: "GET" })
         tags: projects.tags,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
+        totalTasks: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${projectTasks}
+          WHERE ${projectTasks.projectId} = ${projects.id}
+          AND ${projectTasks.deletedAt} IS NULL
+        )`,
+        completedTasks: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${projectTasks}
+          WHERE ${projectTasks.projectId} = ${projects.id}
+          AND ${projectTasks.status} = 'done'
+          AND ${projectTasks.deletedAt} IS NULL
+        )`,
       })
       .from(projects)
       .leftJoin(customers, eq(projects.customerId, customers.id))
@@ -273,6 +287,19 @@ export const getProjectsPaginatedFn = createServerFn({ method: "GET" })
         tags: projects.tags,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
+        totalTasks: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${projectTasks}
+          WHERE ${projectTasks.projectId} = ${projects.id}
+          AND ${projectTasks.deletedAt} IS NULL
+        )`,
+        completedTasks: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${projectTasks}
+          WHERE ${projectTasks.projectId} = ${projects.id}
+          AND ${projectTasks.status} = 'done'
+          AND ${projectTasks.deletedAt} IS NULL
+        )`,
       })
       .from(projects)
       .leftJoin(customers, eq(projects.customerId, customers.id))
@@ -1363,5 +1390,59 @@ export const getTeamMemberFilteredProjectsFn = createServerFn({ method: "GET" })
         hasPreviousPage: page > 1,
       },
       counts,
+    };
+  });
+
+// Global Search - Search projects and tasks by name
+export const globalSearchFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware, allRoles])
+  .inputValidator(
+    z.object({
+      query: z.string().min(1, "Search query is required"),
+      limit: z.number().default(10),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { query, limit } = data;
+    const searchTerm = `%${query.trim()}%`;
+
+    // Search projects
+    const projectResults = await db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        customerName: customers.name,
+      })
+      .from(projects)
+      .leftJoin(customers, eq(projects.customerId, customers.id))
+      .where(and(ilike(projects.name, searchTerm), isNull(projects.deletedAt)))
+      .limit(limit);
+
+    // Search tasks
+    const taskResults = await db
+      .select({
+        id: projectTasks.id,
+        name: projectTasks.name,
+        description: projectTasks.description,
+        status: projectTasks.status,
+        projectId: projectTasks.projectId,
+        projectName: projects.name,
+      })
+      .from(projectTasks)
+      .leftJoin(projects, eq(projectTasks.projectId, projects.id))
+      .where(
+        and(
+          ilike(projectTasks.name, searchTerm),
+          isNull(projectTasks.deletedAt),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .limit(limit);
+
+    return {
+      projects: projectResults,
+      tasks: taskResults,
     };
   });

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
   HoverCard,
   HoverCardContent,
@@ -256,6 +257,24 @@ export function ProjectCard({
                 ))}
               </div>
             )}
+            {/* Task Progress */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Task Progress</span>
+                <span className="text-xs font-medium">
+                  {project.completedTasks || 0} / {project.totalTasks || 0}{" "}
+                  tasks
+                </span>
+              </div>
+              <Progress
+                value={
+                  project.totalTasks && project.totalTasks > 0
+                    ? (project.completedTasks / project.totalTasks) * 100
+                    : 0
+                }
+                className="h-2"
+              />
+            </div>
           </CardContent>
           <CardFooter className="text-xs text-muted-foreground">
             Created {formatDate(project.createdAt)}
