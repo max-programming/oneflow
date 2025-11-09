@@ -22,9 +22,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useRouteContext } from "@tanstack/react-router";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
+import { singOutFn } from "@/server/auth";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function NavUser() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { session } = useRouteContext({ from: "__root__" });
   const { isMobile } = useSidebar();
   const user = session?.user;
@@ -91,7 +95,19 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const res = await singOutFn();
+                if (res.success) {
+                  await queryClient.invalidateQueries({
+                    queryKey: ["session"],
+                  });
+                  navigate({ to: "/sign-in" });
+                }
+              }}
+            >
               <IconLogout />
               Log out
             </DropdownMenuItem>

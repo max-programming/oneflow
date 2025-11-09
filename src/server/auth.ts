@@ -1,7 +1,11 @@
 import { db } from "@/db";
 import { accounts, sessions, users } from "@/db/schema";
 import { createServerFn } from "@tanstack/react-start";
-import { setCookie, getCookie } from "@tanstack/react-start/server";
+import {
+  setCookie,
+  getCookie,
+  deleteCookie,
+} from "@tanstack/react-start/server";
 import { eq, or } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -171,3 +175,18 @@ export const signInFn = createServerFn({ method: "POST" })
       },
     };
   });
+
+export const singOutFn = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const token = getCookie("session_token");
+    if (!token) {
+      throw new Error("No session token found");
+    }
+    deleteCookie("session_token");
+    await db.delete(sessions).where(eq(sessions.token, token));
+
+    return {
+      success: true,
+    };
+  },
+);
