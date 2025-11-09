@@ -29,9 +29,9 @@ import { AssigneeAvatars } from "./assignee-avatars";
 import { TaskStatusDropdown } from "./task-status-dropdown";
 import { Link } from "@tanstack/react-router";
 import { format, isPast, isToday, differenceInDays } from "date-fns";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { TaskStatusEnum } from "@/db/schema";
+import { TaskDetailsDialog } from "./tasks/task-details-dialog";
 
 type FilterType =
   | "all"
@@ -59,6 +59,11 @@ export function TasksOverview({
 }: TasksOverviewProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [filter, setFilter] = React.useState<FilterType>("all");
+  const [selectedTask, setSelectedTask] = React.useState<{
+    taskId: string;
+    taskName: string;
+    projectId: string;
+  } | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -303,12 +308,23 @@ export function TasksOverview({
               </TableHeader>
               <TableBody>
                 {data.tasks.map((task) => (
-                  <TableRow key={task.taskId}>
+                  <TableRow
+                    key={task.taskId}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setSelectedTask({
+                        taskId: task.taskId,
+                        taskName: task.taskName,
+                        projectId: task.projectId,
+                      });
+                    }}
+                  >
                     <TableCell>
                       <Link
                         to="/dashboard/projects/$projectId"
                         params={{ projectId: task.projectId }}
                         className="font-medium hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {task.taskName}
                       </Link>
@@ -323,6 +339,7 @@ export function TasksOverview({
                         to="/dashboard/projects/$projectId"
                         params={{ projectId: task.projectId }}
                         className="text-sm hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {task.projectName}
                       </Link>
@@ -331,7 +348,7 @@ export function TasksOverview({
                       <AssigneeAvatars assignees={task.assignees} />
                     </TableCell>
                     <TableCell>{getDateBadge(task.taskDueDate)}</TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <TaskStatusDropdown
                         status={task.taskStatus}
                         onChange={(newStatus) =>
@@ -367,6 +384,21 @@ export function TasksOverview({
             </p>
           </div>
         </Card>
+      )}
+
+      {/* Task Details Dialog */}
+      {selectedTask && (
+        <TaskDetailsDialog
+          taskId={selectedTask.taskId}
+          taskName={selectedTask.taskName}
+          projectId={selectedTask.projectId}
+          open={!!selectedTask}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedTask(null);
+            }
+          }}
+        />
       )}
     </div>
   );
