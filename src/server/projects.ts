@@ -27,6 +27,7 @@ import {
   authMiddleware,
   projectManagerOrAdmin,
 } from "./auth-middleware";
+import { getProjectId } from "@/lib/id-utils";
 
 // Create Project - Only Project Managers and Admins
 export const createProjectFn = createServerFn({ method: "POST" })
@@ -102,7 +103,11 @@ export const getProjectsFn = createServerFn({ method: "GET" })
       .leftJoin(users, eq(projects.managerId, users.id))
       .where(isNull(projects.deletedAt))
       .orderBy(desc(projects.createdAt));
-    return allProjects;
+
+    return allProjects.map((p) => ({
+      ...p,
+      displayId: getProjectId(p.id),
+    }));
   });
 
 // Get Project by ID - All authenticated users can view
@@ -144,7 +149,10 @@ export const getProjectByIdFn = createServerFn({ method: "GET" })
       throw new Error("Project not found");
     }
 
-    return project;
+    return {
+      ...project,
+      displayId: getProjectId(project.id),
+    };
   });
 
 // Update Project - Only Project Managers and Admins
@@ -351,7 +359,10 @@ export const getProjectsPaginatedFn = createServerFn({ method: "GET" })
       : undefined;
 
     return {
-      projects: projectsToReturn,
+      projects: projectsToReturn.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
       nextCursor,
       hasNextPage,
     };
@@ -495,7 +506,10 @@ export const getFilteredProjectsFn = createServerFn({ method: "GET" })
     };
 
     return {
-      projects: paginatedProjects,
+      projects: paginatedProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
       pagination: {
         currentPage: page,
         totalPages,
@@ -642,9 +656,18 @@ export const getProjectManagerDashboardFn = createServerFn({ method: "GET" })
         overdueProjects,
       },
       statusDistribution,
-      urgentProjects,
-      overdueProjects: overdueProjectsList,
-      recentProjects,
+      urgentProjects: urgentProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
+      overdueProjects: overdueProjectsList.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
+      recentProjects: recentProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
     };
   });
 
@@ -849,9 +872,18 @@ export const getTeamMemberDashboardFn = createServerFn({ method: "GET" })
         overdueProjects,
       },
       statusDistribution,
-      urgentProjects,
-      overdueProjects: overdueProjectsList,
-      recentProjects,
+      urgentProjects: urgentProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
+      overdueProjects: overdueProjectsList.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
+      recentProjects: recentProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
     };
   });
 
@@ -993,9 +1025,18 @@ export const getAdminDashboardFn = createServerFn({ method: "GET" })
         overdueProjects,
       },
       statusDistribution,
-      urgentProjects,
-      overdueProjects: overdueProjectsList,
-      recentProjects,
+      urgentProjects: urgentProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
+      overdueProjects: overdueProjectsList.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
+      recentProjects: recentProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
     };
   });
 
@@ -1118,7 +1159,10 @@ export const getAdminFilteredProjectsFn = createServerFn({ method: "GET" })
     };
 
     return {
-      projects: paginatedProjects,
+      projects: paginatedProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
       pagination: {
         currentPage: page,
         totalPages,
@@ -1307,7 +1351,10 @@ export const getTeamMemberFilteredProjectsFn = createServerFn({ method: "GET" })
     };
 
     return {
-      projects: paginatedProjects,
+      projects: paginatedProjects.map((p) => ({
+        ...p,
+        displayId: getProjectId(p.id),
+      })),
       pagination: {
         currentPage: page,
         totalPages,

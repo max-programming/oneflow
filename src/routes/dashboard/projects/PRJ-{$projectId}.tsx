@@ -200,8 +200,10 @@ function RouteComponent() {
     error,
   } = useQuery({
     queryKey: ["project", projectId],
-    queryFn: () =>
-      getProjectByIdFn({ data: { projectId: parseInt(projectId) } }),
+    queryFn: () => {
+      console.log("projectId", projectId);
+      return getProjectByIdFn({ data: { projectId: parseInt(projectId) } });
+    },
   });
 
   const { data: totalLoggedHours } = useQuery({
@@ -224,8 +226,12 @@ function RouteComponent() {
 
   const { data: projectStatistics } = useQuery({
     queryKey: ["project-statistics", projectId],
-    queryFn: () =>
-      getProjectStatisticsFn({ data: { projectId: parseInt(projectId) } }),
+    queryFn: () => {
+      console.log("projectId", projectId);
+      return getProjectStatisticsFn({
+        data: { projectId: parseInt(projectId) },
+      });
+    },
     enabled: !!projectId,
   });
 
