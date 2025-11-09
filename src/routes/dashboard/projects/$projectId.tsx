@@ -618,6 +618,7 @@ function RouteComponent() {
                 projectId={projectId}
                 highlightedTaskId={highlightedTaskId}
                 onHighlightComplete={handleHighlightComplete}
+                isAdminOrProjectManager={canManageTasks}
               />
             </TabsContent>
 

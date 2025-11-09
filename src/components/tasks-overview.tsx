@@ -25,6 +25,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { IconDotsVertical, IconPencil, IconTrash } from "@tabler/icons-react";
 import { AssigneeAvatars } from "./assignee-avatars";
 import { TaskStatusDropdown } from "./task-status-dropdown";
 import { Link } from "@tanstack/react-router";
@@ -32,6 +41,8 @@ import { format, isPast, isToday, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import type { TaskStatusEnum } from "@/db/schema";
 import { TaskDetailsDialog } from "./tasks/task-details-dialog";
+import { EditTaskDialog } from "./tasks/edit-task-dialog";
+import { DeleteTaskDialog } from "./tasks/delete-task-dialog";
 
 type FilterType =
   | "all"
@@ -54,6 +65,17 @@ interface TasksOverviewProps {
   userRole?: "project-manager" | "team-member" | "admin";
 }
 
+interface EditableTask {
+  taskId: string;
+  taskName: string;
+  taskDescription?: string | null;
+  taskStartDate: string;
+  taskDueDate: string;
+  taskStatus: TaskStatusEnum;
+  projectId: string;
+  projectDeadlineDate?: string | null;
+}
+
 export function TasksOverview({
   userRole = "project-manager",
 }: TasksOverviewProps) {
@@ -64,7 +86,46 @@ export function TasksOverview({
     taskName: string;
     projectId: string;
   } | null>(null);
+
+  // State for edit/delete dialogs
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [taskToEdit, setTaskToEdit] = React.useState<EditableTask | null>(null);
+
   const queryClient = useQueryClient();
+
+  const isAdminOrProjectManager =
+    userRole === "admin" || userRole === "project-manager";
+
+  const handleEditClick = (task: any) => {
+    const editableTask: EditableTask = {
+      taskId: task.taskId,
+      taskName: task.taskName,
+      taskDescription: task.taskDescription,
+      taskStartDate: task.taskStartDate,
+      taskDueDate: task.taskDueDate,
+      taskStatus: task.taskStatus,
+      projectId: task.projectId,
+      projectDeadlineDate: task.projectDeadlineDate || null,
+    };
+    setTaskToEdit(editableTask);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (task: any) => {
+    const taskForDelete: EditableTask = {
+      taskId: task.taskId,
+      taskName: task.taskName,
+      taskDescription: task.taskDescription,
+      taskStartDate: task.taskStartDate,
+      taskDueDate: task.taskDueDate,
+      taskStatus: task.taskStatus,
+      projectId: task.projectId,
+      projectDeadlineDate: null,
+    };
+    setTaskToEdit(taskForDelete);
+    setDeleteDialogOpen(true);
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
@@ -240,6 +301,22 @@ export function TasksOverview({
 
   return (
     <div className="space-y-4">
+      {/* Edit Dialog */}
+      {taskToEdit && (
+        <EditTaskDialog
+          task={taskToEdit}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      <DeleteTaskDialog
+        task={taskToEdit}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
+
       {/* Header with Filter */}
       <div className="flex items-center justify-between">
         <div>
@@ -304,6 +381,9 @@ export function TasksOverview({
                   <TableHead>Assignees</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
+                  {isAdminOrProjectManager && (
+                    <TableHead className="w-[50px]"></TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -356,6 +436,45 @@ export function TasksOverview({
                         }
                       />
                     </TableCell>
+                    {isAdminOrProjectManager && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="data-[state=open]:bg-muted text-muted-foreground h-8 w-8 p-0"
+                              size="icon"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <IconDotsVertical className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(task);
+                              }}
+                            >
+                              <IconPencil className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(task);
+                              }}
+                            >
+                              <IconTrash className="h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

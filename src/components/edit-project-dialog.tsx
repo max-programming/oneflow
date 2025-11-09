@@ -186,18 +186,79 @@ export function EditProjectDialog({
       label: customer.name,
     })) || [];
 
-  // Update project mutation
+  // Update project mutation with optimistic updates
   const updateProjectMutation = useMutation({
     mutationFn: updateProjectFn,
-    onSuccess: () => {
-      toast.success("Project updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      onOpenChange(false);
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+
+      // Snapshot the previous value
+      const previousProjects = queryClient.getQueryData(["projects"]);
+
+      // Optimistically update to the new value
+      queryClient.setQueriesData({ queryKey: ["projects"] }, (old: any) => {
+        if (!old) return old;
+
+        // Handle different query structures (could be array or paginated)
+        if (Array.isArray(old)) {
+          return old.map((p: any) =>
+            p.id === variables.data.projectId
+              ? {
+                  ...p,
+                  name: variables.data.name || p.name,
+                  description: variables.data.description ?? p.description,
+                  status: variables.data.status || p.status,
+                  managerId: variables.data.managerId || p.managerId,
+                  customerId: variables.data.customerId || p.customerId,
+                  startDate: variables.data.startDate || p.startDate,
+                  deadlineDate: variables.data.deadlineDate || p.deadlineDate,
+                  tags: variables.data.tags || p.tags,
+                }
+              : p,
+          );
+        } else if (old.projects) {
+          // Paginated structure
+          return {
+            ...old,
+            projects: old.projects.map((p: any) =>
+              p.id === variables.data.projectId
+                ? {
+                    ...p,
+                    name: variables.data.name || p.name,
+                    description: variables.data.description ?? p.description,
+                    status: variables.data.status || p.status,
+                    managerId: variables.data.managerId || p.managerId,
+                    customerId: variables.data.customerId || p.customerId,
+                    startDate: variables.data.startDate || p.startDate,
+                    deadlineDate: variables.data.deadlineDate || p.deadlineDate,
+                    tags: variables.data.tags || p.tags,
+                  }
+                : p,
+            ),
+          };
+        }
+        return old;
+      });
+
+      return { previousProjects };
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousProjects) {
+        queryClient.setQueryData(["projects"], context.previousProjects);
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to update project",
       );
+    },
+    onSuccess: () => {
+      toast.success("Project updated successfully");
+      onOpenChange(false);
+    },
+    onSettled: () => {
+      // Refetch to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 

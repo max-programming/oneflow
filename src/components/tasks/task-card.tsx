@@ -2,7 +2,15 @@ import { KanbanCard } from "@/components/kibo-ui/kanban";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Calendar, Clock, User, Eye } from "lucide-react";
+import { IconDotsVertical, IconPencil, IconTrash } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { TaskStatusEnum } from "@/db/tables/projects";
 import { TaskDetailsDialog } from "./task-details-dialog";
@@ -33,6 +41,9 @@ interface TaskCardProps {
   isHighlighted?: boolean;
   className?: string;
   projectId?: string;
+  onEdit?: (task: TaskData) => void;
+  onDelete?: (task: TaskData) => void;
+  isAdminOrProjectManager?: boolean;
 }
 
 export function TaskCard({
@@ -40,6 +51,9 @@ export function TaskCard({
   isHighlighted = false,
   className,
   projectId,
+  onEdit,
+  onDelete,
+  isAdminOrProjectManager = false,
 }: TaskCardProps) {
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -83,19 +97,60 @@ export function TaskCard({
 
   return (
     <div className="relative">
-      <TaskDetailsDialog
-        taskId={task.id}
-        taskName={task.name}
-        projectId={projectId}
-      >
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 p-0 hover:bg-primary/10 absolute right-3 bottom-3"
+      <div className="absolute right-3 bottom-3 flex items-center gap-1 z-10">
+        <TaskDetailsDialog
+          taskId={task.id}
+          taskName={task.name}
+          projectId={projectId}
         >
-          <Eye />
-        </Button>
-      </TaskDetailsDialog>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 p-0 hover:bg-primary/10"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        </TaskDetailsDialog>
+        {isAdminOrProjectManager && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 p-0 hover:bg-primary/10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <IconDotsVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(task);
+                }}
+              >
+                <IconPencil className="h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(task);
+                }}
+              >
+                <IconTrash className="h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
       <KanbanCard
         id={task.id}
         name={task.name}

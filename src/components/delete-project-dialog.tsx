@@ -28,15 +28,52 @@ export function DeleteProjectDialog({
 
   const deleteProjectMutation = useMutation({
     mutationFn: deleteProjectFn,
-    onSuccess: () => {
-      toast.success("Project deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      onOpenChange(false);
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+
+      // Snapshot the previous value
+      const previousProjects = queryClient.getQueryData(["projects"]);
+
+      // Optimistically remove the project
+      queryClient.setQueriesData({ queryKey: ["projects"] }, (old: any) => {
+        if (!old) return old;
+
+        // Handle different query structures (could be array or paginated)
+        if (Array.isArray(old)) {
+          return old.filter((p: any) => p.id !== variables.data.projectId);
+        } else if (old.projects) {
+          // Paginated structure
+          return {
+            ...old,
+            projects: old.projects.filter(
+              (p: any) => p.id !== variables.data.projectId,
+            ),
+            nextCursor: old.nextCursor,
+            hasNextPage: old.hasNextPage,
+          };
+        }
+        return old;
+      });
+
+      return { previousProjects };
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousProjects) {
+        queryClient.setQueryData(["projects"], context.previousProjects);
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to delete project",
       );
+    },
+    onSuccess: () => {
+      toast.success("Project deleted successfully");
+      onOpenChange(false);
+    },
+    onSettled: () => {
+      // Refetch to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 

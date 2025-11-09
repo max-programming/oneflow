@@ -20,6 +20,17 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "./ui/skeleton";
 import { Card } from "./ui/card";
+import { Button } from "./ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { IconDotsVertical, IconPencil, IconTrash } from "@tabler/icons-react";
+import { EditTaskDialog } from "./tasks/edit-task-dialog";
+import { DeleteTaskDialog } from "./tasks/delete-task-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -36,12 +47,40 @@ interface TasksListTableProps {
   userRole?: "project-manager" | "team-member" | "admin";
 }
 
+interface Task {
+  taskId: string;
+  taskName: string;
+  taskDescription?: string | null;
+  taskStartDate: string;
+  taskDueDate: string;
+  taskStatus: TaskStatusEnum;
+  projectId: string;
+  projectName: string;
+  projectDeadlineDate?: string | null;
+  assignees: any[];
+}
+
 export function TasksListTable({
   limit = 10,
   userRole = "project-manager",
 }: TasksListTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const queryClient = useQueryClient();
+
+  // State for managing edit/delete dialogs
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
+
+  const handleEditClick = (task: Task) => {
+    setSelectedTask(task);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (task: Task) => {
+    setSelectedTask(task);
+    setDeleteDialogOpen(true);
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
@@ -172,8 +211,27 @@ export function TasksListTable({
     );
   }
 
+  const isAdminOrProjectManager =
+    userRole === "admin" || userRole === "project-manager";
+
   return (
     <div className="space-y-6">
+      {/* Edit Dialog */}
+      {selectedTask && (
+        <EditTaskDialog
+          task={selectedTask}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      <DeleteTaskDialog
+        task={selectedTask}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
+
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Tasks Overview</h2>
@@ -208,7 +266,10 @@ export function TasksListTable({
                   <TableHead className="w-[20%]">Project</TableHead>
                   <TableHead className="w-[15%]">Assignees</TableHead>
                   <TableHead className="w-[15%]">Due Date</TableHead>
-                  <TableHead className="w-[20%]">Status</TableHead>
+                  <TableHead className="w-[15%]">Status</TableHead>
+                  {isAdminOrProjectManager && (
+                    <TableHead className="w-[5%]"></TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -262,6 +323,45 @@ export function TasksListTable({
                           disabled={updateStatusMutation.isPending}
                         />
                       </TableCell>
+                      {isAdminOrProjectManager && (
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="data-[state=open]:bg-muted text-muted-foreground h-8 w-8 p-0"
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <IconDotsVertical className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditClick(task);
+                                }}
+                              >
+                                <IconPencil className="h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(task);
+                                }}
+                              >
+                                <IconTrash className="h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}

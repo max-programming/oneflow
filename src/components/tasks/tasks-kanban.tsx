@@ -13,6 +13,8 @@ import { TaskStatusEnum } from "@/db/tables/projects";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EditTaskDialog } from "./edit-task-dialog";
+import { DeleteTaskDialog } from "./delete-task-dialog";
 import { toast } from "sonner";
 
 // Define base kanban column interface (compatible with KanbanColumnProps)
@@ -25,6 +27,18 @@ interface TasksKanbanProps {
   projectId: string;
   highlightedTaskId?: string | null;
   onHighlightComplete?: () => void;
+  isAdminOrProjectManager?: boolean;
+}
+
+interface EditableTask {
+  taskId: string;
+  taskName: string;
+  taskDescription?: string | null;
+  taskStartDate: string;
+  taskDueDate: string;
+  taskStatus: TaskStatusEnum;
+  projectId: string;
+  projectDeadlineDate?: string | null;
 }
 
 // Define kanban columns based on task status
@@ -79,8 +93,46 @@ export function TasksKanban({
   projectId,
   highlightedTaskId,
   onHighlightComplete,
+  isAdminOrProjectManager = false,
 }: TasksKanbanProps) {
   const queryClient = useQueryClient();
+
+  // State for managing edit/delete dialogs
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<EditableTask | null>(null);
+
+  const handleEditClick = (task: TaskData) => {
+    // Convert TaskData to EditableTask format
+    const editableTask: EditableTask = {
+      taskId: task.id,
+      taskName: task.name,
+      taskDescription: task.description,
+      taskStartDate: task.startDate,
+      taskDueDate: task.dueDate,
+      taskStatus: task.status,
+      projectId: projectId,
+      projectDeadlineDate: null, // We'll need to get this from somewhere
+    };
+    setSelectedTask(editableTask);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (task: TaskData) => {
+    // Convert TaskData to a format suitable for delete dialog
+    const taskForDelete: EditableTask = {
+      taskId: task.id,
+      taskName: task.name,
+      taskDescription: task.description,
+      taskStartDate: task.startDate,
+      taskDueDate: task.dueDate,
+      taskStatus: task.status,
+      projectId: projectId,
+      projectDeadlineDate: null,
+    };
+    setSelectedTask(taskForDelete);
+    setDeleteDialogOpen(true);
+  };
 
   // Fetch tasks for the project
   const {
@@ -207,6 +259,22 @@ export function TasksKanban({
 
   return (
     <div className="h-full">
+      {/* Edit Dialog */}
+      {selectedTask && (
+        <EditTaskDialog
+          task={selectedTask}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      <DeleteTaskDialog
+        task={selectedTask}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
+
       <KanbanProvider
         columns={KANBAN_COLUMNS}
         data={localTasks.map((t) => ({ ...t, column: t.status }))}
@@ -234,6 +302,9 @@ export function TasksKanban({
                   task={task as TaskData}
                   isHighlighted={highlightedTaskId === task.id}
                   projectId={projectId}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteClick}
+                  isAdminOrProjectManager={isAdminOrProjectManager}
                 />
               )}
             </KanbanCards>
