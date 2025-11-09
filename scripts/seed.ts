@@ -879,8 +879,6 @@ async function seed() {
 
       for (let i = 0; i < numExpenses; i++) {
         const amount = randomAmount(50, 2000);
-        const taxPercentage = randomTaxPercentage();
-        const totalAmount = calculateTotalAmount(amount, taxPercentage);
         const expenseDate = new Date(project.startDate!);
         expenseDate.setDate(
           expenseDate.getDate() + Math.floor(Math.random() * 60),
@@ -906,8 +904,6 @@ async function seed() {
           ]),
           category: randomElement(expenseCategories),
           amount,
-          taxPercentage,
-          totalAmount,
           expenseDate: expenseDate.toISOString().split("T")[0],
           billable,
           approvalStatus,
