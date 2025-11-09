@@ -25,6 +25,9 @@ import { User, Building2, Mail, Phone, Shield } from "lucide-react";
 import { IconDotsVertical, IconPencil, IconTrash } from "@tabler/icons-react";
 import { type Project } from "@/components/project-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EditProjectDialog } from "@/components/edit-project-dialog";
+import { DeleteProjectDialog } from "@/components/delete-project-dialog";
+import { useState } from "react";
 
 // Helper function to get status badge variant
 function getStatusVariant(status: string) {
@@ -77,8 +80,39 @@ export function ProjectsListTable({
   projects,
   isAdminOrProjectManager,
 }: ProjectsListTableProps) {
+  // State for managing dialogs
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const handleEditClick = (project: Project) => {
+    setSelectedProject(project);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (project: Project) => {
+    setSelectedProject(project);
+    setDeleteDialogOpen(true);
+  };
+
   return (
     <div className="space-y-4">
+      {/* Edit Dialog */}
+      {selectedProject && (
+        <EditProjectDialog
+          project={selectedProject}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      <DeleteProjectDialog
+        project={selectedProject}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
+
       <div className="rounded-md border overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -257,12 +291,23 @@ export function ProjectsListTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(project);
+                            }}
+                          >
                             <IconPencil className="h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem variant="destructive">
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(project);
+                            }}
+                          >
                             <IconTrash className="h-4 w-4" />
                             Delete
                           </DropdownMenuItem>

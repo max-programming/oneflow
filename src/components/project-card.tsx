@@ -83,9 +83,13 @@ function formatDate(dateValue: string | Date | null | undefined) {
 export function ProjectCard({
   project,
   isAdminOrProjectManager,
+  onEdit,
+  onDelete,
 }: {
   project: Project;
   isAdminOrProjectManager: boolean;
+  onEdit?: (project: Project) => void;
+  onDelete?: (project: Project) => void;
 }) {
   return (
     <DropdownMenu>
@@ -260,12 +264,23 @@ export function ProjectCard({
       </Link>
       {isAdminOrProjectManager && (
         <DropdownMenuContent align="end">
-          <DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(project);
+            }}
+          >
             <IconPencil className="h-4 w-4" />
             Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.(project);
+            }}
+          >
             <IconTrash className="h-4 w-4" />
             Delete
           </DropdownMenuItem>

@@ -6,13 +6,19 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { getProjectsPaginatedFn } from "@/server/projects";
 import { ProjectFiltersBar } from "@/components/project-filters-bar";
 import { Card, CardContent } from "@/components/ui/card";
-import { ProjectCard, ProjectCardSkeleton } from "@/components/project-card";
+import {
+  ProjectCard,
+  ProjectCardSkeleton,
+  type Project,
+} from "@/components/project-card";
 import {
   ProjectsListTable,
   ProjectsListTableSkeleton,
 } from "@/components/projects-list-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LayoutGrid, List, Loader2 } from "lucide-react";
+import { EditProjectDialog } from "@/components/edit-project-dialog";
+import { DeleteProjectDialog } from "@/components/delete-project-dialog";
 import z from "zod";
 
 const searchParamsSchema = z.object({
@@ -48,6 +54,21 @@ function RouteComponent() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // State for managing edit/delete dialogs
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const handleEditClick = (project: Project) => {
+    setSelectedProject(project);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (project: Project) => {
+    setSelectedProject(project);
+    setDeleteDialogOpen(true);
+  };
 
   function handleFiltersChange(newFilters: ProjectsPageSP) {
     navigate({
@@ -115,6 +136,22 @@ function RouteComponent() {
 
   return (
     <div className="flex flex-1 flex-col">
+      {/* Edit Dialog */}
+      {selectedProject && (
+        <EditProjectDialog
+          project={selectedProject}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      <DeleteProjectDialog
+        project={selectedProject}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
+
       <div className="@container/main flex flex-1 flex-col gap-2 px-4 lg:px-6">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           <div className="flex items-center justify-between">
@@ -189,6 +226,8 @@ function RouteComponent() {
                     key={project.id}
                     project={project}
                     isAdminOrProjectManager={isAdminOrProjectManager}
+                    onEdit={handleEditClick}
+                    onDelete={handleDeleteClick}
                   />
                 ))}
               </div>

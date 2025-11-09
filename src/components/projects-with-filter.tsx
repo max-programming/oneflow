@@ -5,7 +5,7 @@ import {
   getTeamMemberFilteredProjectsFn,
   getAdminFilteredProjectsFn,
 } from "@/server/projects";
-import { ProjectCard } from "./project-card";
+import { ProjectCard, type Project } from "./project-card";
 import { Pagination } from "./ui/pagination";
 import {
   Select,
@@ -17,6 +17,8 @@ import {
 import { Skeleton } from "./ui/skeleton";
 import { Card } from "./ui/card";
 import { useRouteContext } from "@tanstack/react-router";
+import { EditProjectDialog } from "@/components/edit-project-dialog";
+import { DeleteProjectDialog } from "@/components/delete-project-dialog";
 
 type FilterType =
   | "all"
@@ -45,6 +47,23 @@ export function ProjectsWithFilter({
   const { session } = useRouteContext({ from: "__root__" });
   const [currentPage, setCurrentPage] = React.useState(1);
   const [filter, setFilter] = React.useState<FilterType>("all");
+
+  // State for managing dialogs
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [selectedProject, setSelectedProject] = React.useState<Project | null>(
+    null,
+  );
+
+  const handleEditClick = (project: Project) => {
+    setSelectedProject(project);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (project: Project) => {
+    setSelectedProject(project);
+    setDeleteDialogOpen(true);
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
@@ -106,6 +125,22 @@ export function ProjectsWithFilter({
 
   return (
     <div className="space-y-6">
+      {/* Edit Dialog */}
+      {selectedProject && (
+        <EditProjectDialog
+          project={selectedProject}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      <DeleteProjectDialog
+        project={selectedProject}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
+
       {/* Header with Filter */}
       <div className="flex items-center justify-between">
         <div>
@@ -172,6 +207,8 @@ export function ProjectsWithFilter({
                 key={project.id}
                 project={project}
                 isAdminOrProjectManager={isAdminOrProjectManager}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteClick}
               />
             ))}
           </div>
