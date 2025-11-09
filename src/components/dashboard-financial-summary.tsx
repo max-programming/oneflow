@@ -147,7 +147,7 @@ export function DashboardFinancialSummary() {
               {/* Description */}
               <div className="pt-3 border-t border-orange-100 dark:border-orange-900/20">
                 <p className="text-xs text-muted-foreground">
-                  From vendor bills & approved expenses
+                  From vendor bills
                 </p>
               </div>
             </div>
